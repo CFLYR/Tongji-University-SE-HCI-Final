@@ -1,0 +1,7 @@
+#version python==3.9.11
+pip install aliyun-python-sdk-core==2.13.3
+pip install urllib3==1.26.6
+pip install websocket-client==0.57.0
+pip install sounddevice==0.4.6
+pip install numpy==1.23.5
+pip install git+https://github.com/aliyun/alibabacloud-nls-python-sdk.git
