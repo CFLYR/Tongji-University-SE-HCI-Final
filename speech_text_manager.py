@@ -218,8 +218,7 @@ class SpeechTextManager:
                 segment.keywords = self.matcher.extract_keywords(segment.text)
             
             self.segments.append(segment)
-        
-        # 设置第一个片段为当前片段
+          # 设置第一个片段为当前片段
         if self.segments:
             self.segments[0].is_current = True
     
@@ -232,10 +231,10 @@ class SpeechTextManager:
         except Exception as e:
             print(f"❌ 保存演讲稿配置失败: {e}")
     
-    def match_input_text(self, input_text: str) -> bool:
-        """根据输入文本匹配演讲稿位置"""
+    def match_input_text(self, input_text: str) -> tuple:
+        """根据输入文本匹配演讲稿位置，返回(匹配成功, 片段文本, 置信度)"""
         if not input_text.strip():
-            return False
+            return False, "", 0.0
         
         print(f"🔍 匹配输入文本: {input_text}")
         
@@ -255,13 +254,14 @@ class SpeechTextManager:
             print(f"✅ 匹配成功! 片段 {best_index + 1}, 置信度: {confidence:.2f}")
             print(f"📍 当前内容: {self.segments[best_index].text[:50]}...")
             
-            # 返回True表示找到匹配，无论是否需要切换幻灯片
-            return True
+            # 返回匹配结果：找到匹配、片段文本、置信度
+            return True, self.segments[best_index].text, confidence
                 
         else:
             print(f"❌ 未找到匹配的演讲内容 (输入: {input_text[:30]}...)")
         
-        return False
+        # 返回未匹配结果
+        return False, "", 0.0
     
     def get_current_slide_number(self) -> int:
         """获取当前应该显示的幻灯片页码"""
