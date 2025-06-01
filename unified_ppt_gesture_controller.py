@@ -25,6 +25,7 @@ from typing import Dict, List, Tuple, Optional, Callable
 import handTrackingModule as hmt
 from chinese_text_renderer import put_chinese_text, ChineseTextRenderer, put_text_auto
 from ppt_controller import PPTController, get_ppt_controller
+from speech_text_manager import SpeechTextManager, SpeechScrollDisplay
 
 
 class GestureType(Enum):
@@ -49,6 +50,9 @@ class PPTAction(Enum):
     ZOOM_OUT = "zoom_out"
     JUMP_TO_PAGE = "jump_to_page"
     MENU_TOGGLE = "menu_toggle"
+    SPEECH_SCROLL_TOGGLE = "speech_scroll_toggle"  # 切换演讲稿滚动显示
+    SPEECH_NEXT = "speech_next"  # 演讲稿下一段
+    SPEECH_PREV = "speech_prev"  # 演讲稿上一段
 
 
 @dataclass
@@ -264,6 +268,11 @@ class UnifiedPPTGestureController:
         # 初始化中文文本渲染器
         self.chinese_renderer = ChineseTextRenderer()
 
+        # 初始化演讲稿管理器
+        self.speech_manager = SpeechTextManager()
+        self.speech_display = None
+        self.show_speech_scroll = False
+
         # 加载手势配置
         self.gesture_configs = self.load_gesture_configs()
 
@@ -360,6 +369,31 @@ class UnifiedPPTGestureController:
                 confidence_threshold=0.9,
                 hold_duration=1.0,
                 enabled=False  # 禁用全屏切换手势
+            ),
+            "speech_scroll": GestureConfig(
+                name="演讲稿滚动",
+                gesture_type=GestureType.STATIC,
+                action=PPTAction.SPEECH_SCROLL_TOGGLE,
+                finger_pattern=[1, 1, 0, 0, 0],  # 拇指+食指 (OK手势)
+                confidence_threshold=0.8,
+                hold_duration=1.5,
+                enabled=True
+            ),
+            "speech_next": GestureConfig(
+                name="演讲稿下一段",
+                gesture_type=GestureType.DYNAMIC,
+                action=PPTAction.SPEECH_NEXT,
+                motion_pattern="swipe_up",
+                confidence_threshold=0.7,
+                enabled=True
+            ),
+            "speech_prev": GestureConfig(
+                name="演讲稿上一段",
+                gesture_type=GestureType.DYNAMIC,
+                action=PPTAction.SPEECH_PREV,
+                motion_pattern="swipe_down",
+                confidence_threshold=0.7,
+                enabled=True
             )
         }
 
@@ -471,16 +505,14 @@ class UnifiedPPTGestureController:
                 # 动态手势匹配
                 if config.motion_pattern in detected_gestures:
                     confidence = detected_gestures[config.motion_pattern]
-                    matched = True
-
-            # 检查置信度阈值
+                    matched = True            # 检查置信度阈值
             if matched and confidence >= config.confidence_threshold:
                 # 检查持续时间要求
                 if config.hold_duration > 0:
                     if config_key not in self.gesture_detector.last_gesture_time:
                         self.gesture_detector.last_gesture_time[config_key] = current_time
                     elif current_time - self.gesture_detector.last_gesture_time[config_key] >= config.hold_duration:
-                        self.ppt_controller.execute_action(config.action)
+                        self.execute_custom_action(config.action)
                         self.gesture_detector.last_gesture_time[config_key] = current_time
                         # 记录命令执行时间，开始冷却
                         self.last_command_execution_time = current_time
@@ -489,7 +521,7 @@ class UnifiedPPTGestureController:
                     # 防止重复触发
                     if config_key not in self.gesture_detector.last_gesture_time or \
                             current_time - self.gesture_detector.last_gesture_time[config_key] > 1.0:
-                        self.ppt_controller.execute_action(config.action)
+                        self.execute_custom_action(config.action)
                         self.gesture_detector.last_gesture_time[config_key] = current_time
                         # 记录命令执行时间，开始冷却
                         self.last_command_execution_time = current_time
@@ -589,11 +621,13 @@ class UnifiedPPTGestureController:
             "系统特性:",
             "✓ 实时手势检测",
             "✓ 命令执行后冷却防误触",
-            "",
-            "按键控制:",
+            "",            "按键控制:",
             "H - 显示/隐藏帮助",
             "C - 校准模式",
             "S - 保存配置",
+            "T - 文本输入匹配模式",
+            "N - 演讲稿下一段",
+            "P - 演讲稿上一段",
             "+ - 增加冷却时间",
             "- - 减少冷却时间",
             "Q/ESC - 退出程序"
@@ -606,6 +640,105 @@ class UnifiedPPTGestureController:
 
         # 半透明效果
         cv.addWeighted(img, 0.3, overlay, 0.7, 0, img)
+
+    def execute_custom_action(self, action):
+        """执行自定义动作，包括演讲稿相关功能"""
+        try:
+            if hasattr(action, 'value'):
+                action_str = action.value
+            else:
+                action_str = str(action)
+            
+            # 处理演讲稿相关动作
+            if action_str == "speech_scroll_toggle":
+                self.toggle_speech_scroll()
+            elif action_str == "speech_next":
+                self.speech_next_segment()
+            elif action_str == "speech_prev":
+                self.speech_prev_segment()
+            else:
+                # 其他动作交给PPT控制器处理
+                self.ppt_controller.execute_action(action)
+                
+        except Exception as e:
+            print(f"❌ 执行动作失败 ({action_str}): {e}")
+    
+    def toggle_speech_scroll(self):
+        """切换演讲稿滚动显示"""
+        self.show_speech_scroll = not self.show_speech_scroll
+        
+        if self.show_speech_scroll:
+            if self.speech_display is None:
+                self.speech_display = SpeechScrollDisplay(self.speech_manager)
+            print("📺 演讲稿滚动显示已开启")            # 在新线程中启动显示窗口
+            import threading
+            display_thread = threading.Thread(target=self.speech_display.show_display, daemon=True)
+            display_thread.start()
+        else:
+            print("📺 演讲稿滚动显示已关闭")
+            if self.speech_display:
+                cv.destroyWindow(self.speech_display.display_window_name)
+    
+    def speech_next_segment(self):
+        """演讲稿下一段"""
+        if self.speech_manager.manually_navigate("next"):
+            current_slide = self.speech_manager.get_current_slide_number()
+            print(f"📍 演讲稿导航到下一段，建议切换到幻灯片 {current_slide}")
+            # 可以选择自动切换幻灯片
+            # self.ppt_controller.jump_to_slide(current_slide)
+    
+    def speech_prev_segment(self):
+        """演讲稿上一段"""
+        if self.speech_manager.manually_navigate("prev"):
+            current_slide = self.speech_manager.get_current_slide_number()
+            print(f"📍 演讲稿导航到上一段，建议切换到幻灯片 {current_slide}")
+            # 可以选择自动切换幻灯片
+            # self.ppt_controller.jump_to_slide(current_slide)
+    
+    def match_speech_text(self, input_text: str):
+        """根据输入文本匹配演讲稿"""
+        if self.speech_manager.match_input_text(input_text):
+            current_slide = self.speech_manager.get_current_slide_number()
+            print(f"🎯 演讲稿匹配成功，建议切换到幻灯片 {current_slide}")
+            # 如果启用自动滚动，可以自动切换幻灯片
+            if self.speech_manager.auto_scroll_enabled:
+                self.ppt_controller.jump_to_slide(current_slide)
+    
+    def handle_text_input(self):
+        """处理文本输入匹配"""
+        print("\n🎤 语音文本匹配模式")
+        print("请输入要匹配的文本 (按回车确认，输入'exit'退出):")
+        
+        try:
+            # 暂停OpenCV窗口的键盘监听
+            cv.destroyWindow('统一PPT手势识别播放器')
+            
+            while True:
+                user_input = input("输入文本> ").strip()
+                
+                if user_input.lower() == 'exit':
+                    print("退出文本输入模式")
+                    break
+                elif not user_input:
+                    print("请输入有效文本")
+                    continue
+                
+                # 执行文本匹配
+                print(f"🔍 正在匹配: {user_input}")
+                self.match_speech_text(user_input)
+                
+                # 显示当前演讲稿状态
+                current_segment = self.speech_manager.segments[self.speech_manager.current_index]
+                print(f"📍 当前段落 {self.speech_manager.current_index + 1}: {current_segment.text[:50]}...")
+                
+        except KeyboardInterrupt:
+            print("\n用户中断文本输入")
+        except Exception as e:
+            print(f"❌ 文本输入处理错误: {e}")
+        
+        # 重新创建OpenCV窗口
+        print("返回手势识别模式...")
+        print("按 'T' 再次进入文本输入模式")
 
     def run(self):
         """运行主程序"""
@@ -642,9 +775,7 @@ class UnifiedPPTGestureController:
             self.frame_count += 1
 
             # 显示图像
-            cv.imshow('统一PPT手势识别播放器', img)
-
-            # 处理按键
+            cv.imshow('统一PPT手势识别播放器', img)            # 处理按键
             key = cv.waitKey(1) & 0xFF
             if key == ord('q') or key == 27:  # Q或ESC退出
                 self.running = False
@@ -655,6 +786,12 @@ class UnifiedPPTGestureController:
                 print(f"校准模式: {'开启' if self.calibration_mode else '关闭'}")
             elif key == ord('s'):  # S保存配置
                 self.save_gesture_configs()
+            elif key == ord('t'):  # T键触发文本输入匹配
+                self.handle_text_input()
+            elif key == ord('n'):  # N键演讲稿下一段
+                self.speech_next_segment()
+            elif key == ord('p'):  # P键演讲稿上一段
+                self.speech_prev_segment()
             elif key == ord('+') or key == ord('='):  # +键增加冷却时间
                 self.command_cooldown_duration = min(5.0, self.command_cooldown_duration + 0.5)
                 print(f"命令冷却时间增加到: {self.command_cooldown_duration}秒")
