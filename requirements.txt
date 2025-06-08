@@ -3,4 +3,5 @@ opencv-python>=4.7.0
 mediapipe>=0.10.0
 python-pptx>=0.6.21
 SpeechRecognition>=3.10.0
-pyttsx3>=2.90 
+pyttsx3>=2.90
+pywin32>=305 
