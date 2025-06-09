@@ -91,8 +91,6 @@ class MainWindow(QMainWindow):
         # 连接UI控件信号
         self.open_ppt_btn.clicked.connect(self.select_ppt_file)
         self.start_btn.clicked.connect(self.toggle_presentation)
-        self.prev_btn.clicked.connect(self.controller.previous_slide)
-        self.next_btn.clicked.connect(self.controller.next_slide)
         self.gesture_checkbox.stateChanged.connect(self.toggle_gesture_detection)
         self.voice_checkbox.stateChanged.connect(self.toggle_voice_recognition)
         self.interval_spin.valueChanged.connect(self.update_detection_interval)
@@ -171,22 +169,32 @@ class MainWindow(QMainWindow):
     def toggle_presentation(self):
         """切换演示状态"""
         # 根据按钮文本判断当前状态
-        if self.start_btn.text() == "播放":
+        if self.start_btn.text() == "开始播放":
             # 检查是否已选择PPT文件
             if not self.controller.ppt_controller.current_ppt_path:
                 self.handle_error("请先选择PPT文件")
-                return
-            # 开始播放
+                return            # 开始播放
             if self.controller.start_presentation(self.controller.ppt_controller.current_ppt_path):
                 self.start_btn.setText("暂停")
                 self.update_status("正在播放PPT...")
                 # 打开悬浮窗
                 if self.floating_window is None:
                     self.floating_window = PPTFloatingWindow()
+                    # 连接悬浮窗的录像信号
+                    self.floating_window.recording_started.connect(self.on_recording_started)
+                    self.floating_window.recording_stopped.connect(self.on_recording_stopped)
+                    self.floating_window.subtitle_updated.connect(self.on_subtitle_updated)
+                    
+                    # 如果有演讲稿管理器，设置到悬浮窗
+                    if hasattr(self.controller, 'speech_manager'):
+                        self.floating_window.set_speech_manager(self.controller.speech_manager)
+                
+                self.floating_window.show()
+                
                 self.floating_window.show()
         else:
             self.controller.stop_presentation()
-            self.start_btn.setText("播放")
+            self.start_btn.setText("开始播放")
             self.update_status("演示已停止")
 
     def mousePressEvent(self, event):
@@ -300,6 +308,91 @@ class MainWindow(QMainWindow):
     def on_error_occurred(self, error: str):
         """错误处理"""
         self.handle_error(error)
+        
+    def on_recording_started(self):
+        """录像开始处理"""
+        self.update_status("录像已开始", is_error=False)
+        # 显示录像状态指示器
+        self.recording_status_label.setText("🎥 正在录制")
+        self.recording_status_label.setStyleSheet("background-color: #FFEBEE; color: #D32F2F; border-radius: 6px; padding: 8px;")
+        self.recording_status_label.show()
+        print("🎥 录像已开始")
+    
+    def on_recording_stopped(self, video_path: str):
+        """录像停止处理"""
+        self.update_status(f"录像已停止，文件保存到: {video_path}", is_error=False)
+        # 隐藏录像状态指示器
+        self.recording_status_label.hide()
+        print(f"🎬 录像已停止，保存到: {video_path}")
+    
+    def on_subtitle_updated(self, subtitle_text: str):
+        """字幕更新处理"""
+        # 可以在这里显示字幕或发送给演讲稿管理器进行文稿修正
+        if hasattr(self.controller, 'speech_manager') and self.controller.speech_manager:
+            # 发送给演讲稿管理器进行处理
+            self.controller.speech_manager.process_real_time_text(subtitle_text)
+        
+        # 更新录像状态显示包含字幕信息
+        if hasattr(self, 'recording_status_label') and self.recording_status_label.isVisible():
+            # 截取字幕前20个字符用于显示
+            subtitle_preview = subtitle_text[:20] + "..." if len(subtitle_text) > 20 else subtitle_text
+            self.recording_status_label.setText(f"🎥 录制中 📝 {subtitle_preview}")
+        
+        print(f"📝 字幕更新: {subtitle_text}")
+    
+    def toggle_quick_recording(self):
+        """快捷录像功能"""
+        if not hasattr(self, 'floating_window') or self.floating_window is None:
+            self.update_status("请先开始PPT演示以显示悬浮窗", is_error=True)
+            return
+        
+        # 获取录像状态
+        recording_status = self.floating_window.get_recording_status()
+        
+        if not recording_status.get('recording_available', False):
+            self.update_status("录像功能不可用", is_error=True)
+            return
+        
+        if recording_status.get('is_recording', False):
+            # 停止录像
+            self.floating_window.stop_recording()
+            self.quick_record_btn.setText("录像")
+            self.quick_record_btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #FF4444;
+                    color: white;
+                    border-radius: 4px;
+                    font-weight: bold;
+                    margin-left: 5px;
+                    margin-right: 0px;
+                }
+                QPushButton:hover {
+                    background-color: #FF6666;
+                }
+                QPushButton:pressed {
+                    background-color: #CC3333;
+                }
+            """)
+        else:
+            # 开始录像
+            self.floating_window.start_recording()
+            self.quick_record_btn.setText("停止")
+            self.quick_record_btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #4CAF50;
+                    color: white;
+                    border-radius: 4px;
+                    font-weight: bold;
+                    margin-left: 5px;
+                    margin-right: 0px;
+                }
+                QPushButton:hover {
+                    background-color: #66BB6A;
+                }
+                QPushButton:pressed {
+                    background-color: #388E3C;
+                }
+            """)
     
     def closeEvent(self, event):
         """窗口关闭事件处理"""
@@ -583,9 +676,7 @@ class MainWindow(QMainWindow):
         status_title_layout.addWidget(status_title_label)
         status_layout.addLayout(status_title_layout)
         status_layout.addSpacing(15)
-        status_layout.addStretch()
-
-        # 添加系统状态标签
+        status_layout.addStretch()        # 添加系统状态标签
         self.status_label = QLabel("系统就绪")
         self.status_label.setStyleSheet("background-color: #E8F5E9; color: #388E3C; border-radius: 6px; padding: 8px;")
         status_layout.addWidget(self.status_label)
@@ -594,8 +685,15 @@ class MainWindow(QMainWindow):
         self.gesture_status_label.setStyleSheet("background-color: #E8F5E9; color: #388E3C; border-radius: 6px; padding: 8px;")
         self.voice_status_label = QLabel("")
         self.voice_status_label.setStyleSheet("background-color: #E3F2FD; color: #1976D2; border-radius: 6px; padding: 8px;")
+        
+        # 录像状态指示器
+        self.recording_status_label = QLabel("")
+        self.recording_status_label.setStyleSheet("background-color: #FFF3E0; color: #F57C00; border-radius: 6px; padding: 8px;")
+        self.recording_status_label.hide()  # 初始隐藏
+        
         status_layout.addWidget(self.gesture_status_label)
         status_layout.addWidget(self.voice_status_label)
+        status_layout.addWidget(self.recording_status_label)
         layout.addWidget(status_group)
 
         layout.addStretch()
@@ -631,31 +729,17 @@ class MainWindow(QMainWindow):
         control_layout = QHBoxLayout()
         control_layout.setSpacing(15)
 
-        self.prev_btn = QPushButton("上一页")
-        self.prev_btn.setStyleSheet("margin-left:0px;margin-right:0px;background-color: #F5F5F5;color: #2B2B2B;")
-        self.prev_btn.setIcon(QIcon("resources/icons/prev.png"))
-        self.prev_btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
        
 
-        self.start_btn = QPushButton("播放")
+        self.start_btn = QPushButton("开始播放")
         self.start_btn.setIcon(QIcon("resources/icons/运行.svg"))
-        self.start_btn.setIconSize(QSize(20, 20))
+        self.start_btn.setIconSize(QSize(80, 20))
         self.start_btn.setMinimumHeight(28)
-        self.start_btn.setMaximumWidth(100)
+        self.start_btn.setMaximumWidth(100)        
         self.start_btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.start_btn.setStyleSheet("margin-left:0px;margin-right:0px;")
 
-        self.next_btn = QPushButton("下一页")
-        self.next_btn.setStyleSheet("margin-left:0px;margin-right:0px;background-color: #F5F5F5;color: #2B2B2B;")
-        self.next_btn.setIcon(QIcon("resources/icons/next.png"))
-        self.next_btn.setMinimumHeight(40)
-        self.next_btn.setMaximumWidth(100)
-        self.next_btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-
-
-        control_layout.addWidget(self.prev_btn)
         control_layout.addWidget(self.start_btn)
-        control_layout.addWidget(self.next_btn)
 
         main_vlayout.addLayout(control_layout)
         layout.addWidget(control_group)
@@ -992,5 +1076,5 @@ class MainWindow(QMainWindow):
                 border-radius: 4px;
             }
                            
-        """) 
+        """)
 

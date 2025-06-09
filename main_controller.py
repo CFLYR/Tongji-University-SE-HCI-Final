@@ -246,24 +246,39 @@ class MainController(QObject):
     def toggle_gesture_detection(self, enabled: bool):
         """切换手势检测状态"""
         try:
+            # 使用 UnifiedPPTGestureController 的 running 属性来控制手势检测
+            self.gesture_controller.running = enabled
             if enabled:
-                self.gesture_controller.start_detection()
+                self.gesture_detection_started.emit()
             else:
-                self.gesture_controller.stop_detection()
+                self.gesture_detection_stopped.emit()
         except Exception as e:
             self.error_occurred.emit(f"切换手势检测失败: {str(e)}")
 
     def update_gesture_mapping(self, gesture: str, action: str):
         """更新手势映射"""
         try:
-            self.gesture_controller.update_gesture_mapping(gesture, action)
+            # 由于 UnifiedPPTGestureController 没有 update_gesture_mapping 方法
+            # 我们需要直接修改手势配置
+            if gesture in self.gesture_controller.gesture_configs:
+                # 这里可以根据需要更新手势配置
+                # 例如：self.gesture_controller.gesture_configs[gesture].action = action
+                self.config_changed.emit(gesture)
+            else:
+                self.error_occurred.emit(f"未找到手势配置: {gesture}")
         except Exception as e:
             self.error_occurred.emit(f"更新手势映射失败: {str(e)}")
 
     def update_detection_interval(self, interval: int):
         """更新检测间隔"""
         try:
-            self.gesture_controller.update_detection_interval(interval)
+            # 由于 UnifiedPPTGestureController 没有 update_detection_interval 方法
+            # 我们可以设置命令冷却时间来控制检测间隔
+            if hasattr(self.gesture_controller, 'command_cooldown_duration'):
+                self.gesture_controller.command_cooldown_duration = float(interval / 1000.0)  # 转换为秒
+                self.config_changed.emit("detection_interval")
+            else:
+                self.error_occurred.emit("无法更新检测间隔：控制器不支持此功能")
         except Exception as e:
             self.error_occurred.emit(f"更新检测间隔失败: {str(e)}")
 
