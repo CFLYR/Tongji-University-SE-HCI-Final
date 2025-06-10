@@ -261,15 +261,13 @@ class PPTController:
         else:
             action_str = str(action)
             
-        try:
-            # 映射操作到具体方法
+        try:            # 映射操作到具体方法
             action_map = {
                 "next_slide": self.next_slide,
                 "prev_slide": self.previous_slide,
                 "play_pause": self.play_pause,
                 "exit_presentation": self.exit_presentation,
                 "fullscreen_toggle": self.fullscreen_toggle,
-                "laser_pointer": self.laser_pointer_mode,
                 "draw_mode": self.pen_mode,
                 "erase_mode": self.eraser_mode,
                 "zoom_in": self.zoom_in,

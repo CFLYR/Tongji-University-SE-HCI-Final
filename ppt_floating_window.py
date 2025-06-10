@@ -886,8 +886,7 @@ class PPTFloatingWindow(QWidget):
                     background: #D9363E;
                 }
             """)
-            
-            # 启动手势控制线程
+              # 启动手势控制线程
             self.gesture_thread = threading.Thread(target=self._run_gesture_control, daemon=True)
             self.is_gesture_active = True
             self.gesture_thread.start()
@@ -897,35 +896,20 @@ class PPTFloatingWindow(QWidget):
         except Exception as e:
             print(f"❌ 启动手势控制失败: {e}")
             self.is_gesture_active = False
+    
     def _setup_ppt_presentation_state(self):
         """设置PPT演示状态"""
         if not self.gesture_controller:
             return
             
         try:
-            # 自动初始化PPT - 使用unified_ppt_gesture_controller的逻辑
+            # 只设置PPT控制器状态，不自动打开PPT文件
             ppt_controller = self.gesture_controller.ppt_controller
             
-            # 尝试自动找到并打开PPT文件
-            ppt_file = ppt_controller.auto_select_ppt()
-            if ppt_file:
-                print(f"📄 发现PPT文件: {os.path.basename(ppt_file)}")
-                print("🚀 自动启动PPT演示...")
-                
-                # 自动打开PPT文件
-                if ppt_controller.open_powerpoint_file(ppt_file):
-                    print("✅ PPT演示已启动，手势控制和按钮控制可用")
-                    ppt_controller.is_presentation_active = True
-                else:
-                    print("⚠️ PPT自动启动失败，请手动启动PPT")
-                    # 即使启动失败，也标记为活动以允许按钮控制
-                    ppt_controller.is_presentation_active = True
-            else:
-                print("📢 未找到PPT文件，请手动打开PPT进入演示模式")
-                # 假设用户会手动打开PPT
-                ppt_controller.is_presentation_active = True
-            
-            print("📢 提示：如果PPT没有自动进入演示模式，请手动按F5进入演示模式")
+            # 直接设置为活跃状态，允许按钮控制
+            ppt_controller.is_presentation_active = True
+            print("✅ PPT控制状态已设置为活跃，按钮控制可用")
+            print("📢 提示：请确保PPT已在演示模式（按F5进入），然后可以使用手势和按钮控制")
             
         except Exception as e:
             print(f"⚠️ 设置PPT状态时出错: {e}")

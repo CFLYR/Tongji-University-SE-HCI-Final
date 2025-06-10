@@ -43,7 +43,6 @@ class PPTAction(Enum):
     PLAY_PAUSE = "play_pause"
     EXIT_PRESENTATION = "exit_presentation"
     FULLSCREEN_TOGGLE = "fullscreen_toggle"
-    LASER_POINTER = "laser_pointer"
     DRAW_MODE = "draw_mode"
     ERASE_MODE = "erase_mode"
     ZOOM_IN = "zoom_in"
@@ -346,20 +345,12 @@ class UnifiedPPTGestureController:
                 finger_pattern=[0, 0, 0, 0, 0],  # 拳头
                 confidence_threshold=0.9,
                 enabled=False  # 禁用暂停/播放手势
-            ),
-            "exit": GestureConfig(
+            ),            "exit": GestureConfig(
                 name="退出",
                 gesture_type=GestureType.DUAL_HAND,
                 action=PPTAction.EXIT_PRESENTATION,
                 confidence_threshold=0.8,
                 hold_duration=2.0
-            ),
-            "laser": GestureConfig(
-                name="激光指示器",
-                gesture_type=GestureType.STATIC,
-                action=PPTAction.LASER_POINTER,
-                finger_pattern=[0, 1, 0, 0, 0],  # 食指
-                confidence_threshold=0.8
             ),
             "fullscreen": GestureConfig(
                 name="全屏切换",
@@ -599,9 +590,7 @@ class UnifiedPPTGestureController:
         # 绘制手部关键点 (如果需要)
         if len(lmList) != 0 and self.calibration_mode:
             for lm in lmList:
-                cv.circle(img, (lm[1], lm[2]), 5, (255, 0, 255), -1)
-
-        # 绘制帮助信息
+                cv.circle(img, (lm[1], lm[2]), 5, (255, 0, 255), -1)        # 绘制帮助信息
         if self.show_help:
             self.draw_help_overlay(img)
 
@@ -615,13 +604,13 @@ class UnifiedPPTGestureController:
             "手势控制帮助:",
             "右滑 - 下一页",
             "左滑 - 上一页",
-            "食指 - 激光指示器",
             "双拳(长按) - 退出",
             "",
             "系统特性:",
             "✓ 实时手势检测",
             "✓ 命令执行后冷却防误触",
-            "",            "按键控制:",
+            "",
+            "按键控制:",
             "H - 显示/隐藏帮助",
             "C - 校准模式",
             "S - 保存配置",
@@ -772,10 +761,11 @@ class UnifiedPPTGestureController:
             if cTime != pTime:
                 self.fps = 1 / (cTime - pTime)
             pTime = cTime
-            self.frame_count += 1
-
-            # 显示图像
-            cv.imshow('统一PPT手势识别播放器', img)            # 处理按键
+            self.frame_count += 1            # 显示图像
+            cv.imshow('统一PPT手势识别播放器', img)
+            
+            # 确保摄像头窗口始终在最前面
+            cv.setWindowProperty('统一PPT手势识别播放器', cv.WND_PROP_TOPMOST, 1)# 处理按键
             key = cv.waitKey(1) & 0xFF
             if key == ord('q') or key == 27:  # Q或ESC退出
                 self.running = False

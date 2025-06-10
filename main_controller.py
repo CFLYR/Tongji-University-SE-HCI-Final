@@ -253,19 +253,13 @@ class MainController(QObject):
             else:
                 self.gesture_detection_stopped.emit()
         except Exception as e:
-            self.error_occurred.emit(f"切换手势检测失败: {str(e)}")
-
+            self.error_occurred.emit(f"切换手势检测失败: {str(e)}")   
     def update_gesture_mapping(self, gesture: str, action: str):
-        """更新手势映射"""
+        """更新手势映射 - 已移至主窗口处理"""
         try:
-            # 由于 UnifiedPPTGestureController 没有 update_gesture_mapping 方法
-            # 我们需要直接修改手势配置
-            if gesture in self.gesture_controller.gesture_configs:
-                # 这里可以根据需要更新手势配置
-                # 例如：self.gesture_controller.gesture_configs[gesture].action = action
-                self.config_changed.emit(gesture)
-            else:
-                self.error_occurred.emit(f"未找到手势配置: {gesture}")
+            # 手势映射更新逻辑已移至主窗口的update_gesture_mapping方法
+            # 这里只需要发出配置更改信号
+            self.config_changed.emit(f"{action}->{gesture}")
         except Exception as e:
             self.error_occurred.emit(f"更新手势映射失败: {str(e)}")
 

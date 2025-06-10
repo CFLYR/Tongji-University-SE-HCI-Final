@@ -192,7 +192,6 @@ class MainWindow(QMainWindow):
                         self.floating_window.set_speech_manager(self.controller.speech_manager)
                 
                 self.floating_window.show()
-                
         else:
             self.controller.stop_presentation()
             self.start_btn.setText("开始播放")
@@ -220,9 +219,8 @@ class MainWindow(QMainWindow):
             self.controller.toggle_gesture_detection(enabled)
             status = "开启" if enabled else "关闭"
             self.update_status(f"手势检测已{status}")
-    
     def toggle_voice_recognition(self, state):
-        """切换语音识别状态"""
+        """切换语音识别状态"""        
         # TODO: 实现语音识别功能
         pass
     
@@ -230,11 +228,73 @@ class MainWindow(QMainWindow):
         """更新检测间隔"""
         self.controller.update_detection_interval(interval)
         self.update_status(f"已更新检测间隔: {interval}ms")
-    
-    def update_gesture_mapping(self, gesture: str, action: str):
+        
+    def update_gesture_mapping(self, action: str, gesture: str):
         """更新手势映射"""
-        self.controller.update_gesture_mapping(gesture, action)
-        self.update_status(f"已更新手势映射: {gesture} -> {action}")
+        try:
+            # 创建前端到后端的映射
+            action_mapping = {
+                "上一页": "prev_slide",
+                "下一页": "next_slide", 
+                "开始播放": "fullscreen",
+                "结束播放": "exit",
+                "暂停": "pause",
+                "继续": "pause"
+            }
+            gesture_mapping = {
+                "向左滑动": "swipe_left",
+                "向右滑动": "swipe_right", 
+                "向上滑动": "swipe_up",
+                "向下滑动": "swipe_down",
+                "握拳": "fist",
+                "张开手掌": "open_hand",
+                "OK手势": "ok",
+                "食指": "point",
+                "双手手势": "dual_hand",
+                "无": "none"
+            }
+            
+            backend_action = action_mapping.get(action, action)
+            backend_gesture = gesture_mapping.get(gesture, gesture)
+            
+            # 更新后端配置
+            if hasattr(self.controller, 'gesture_controller') and hasattr(self.controller.gesture_controller, 'gesture_configs'):
+                configs = self.controller.gesture_controller.gesture_configs
+                
+                # 找到对应的配置并更新
+                if backend_action in configs:
+                    config = configs[backend_action]
+                    # 根据手势类型更新配置
+                    if backend_gesture == "none":
+                        config.enabled = False
+                    else:
+                        config.enabled = True
+                        if config.gesture_type.value == "dynamic":
+                            config.motion_pattern = backend_gesture
+                        elif config.gesture_type.value == "static":
+                            # 设置手指模式
+                            finger_patterns = {
+                                "fist": [0, 0, 0, 0, 0],
+                                "open_hand": [1, 1, 1, 1, 1],
+                                "ok": [1, 1, 0, 0, 0],  # OK手势的手指模式
+                                "point": [0, 1, 0, 0, 0],  # 食指的手指模式
+                            }
+                            if backend_gesture in finger_patterns:
+                                config.finger_pattern = finger_patterns[backend_gesture]
+                        elif config.gesture_type.value == "dual_hand":
+                            # 双手手势不需要设置finger_pattern
+                            pass
+                    
+                    # 保存配置
+                    self.controller.gesture_controller.save_gesture_configs()
+                    self.update_status(f"已更新手势映射: {action} -> {gesture}")
+                else:
+                    self.update_status(f"未找到手势配置: {backend_action}", True)
+            else:
+                self.update_status("手势控制器未初始化", True)
+                
+        except Exception as e:
+            self.update_status(f"更新手势映射失败: {str(e)}", True)
     
     def update_status(self, message: str = None, is_error: bool = False):
         """更新状态显示"""
@@ -772,17 +832,35 @@ class MainWindow(QMainWindow):
         mapping_layout.setSpacing(10)
         mapping_layout.setContentsMargins(0, 0, 0, 0)
 
-
         self.gesture_mappings = {}
-        gestures = ["向左滑动", "向右滑动", "向上滑动", "向下滑动", "握拳", "张开手掌","自定义手势","无"]
+        # 只包含后端实际支持的手势选项
+        gestures = [
+            "向左滑动",      # swipe_left - 后端支持
+            "向右滑动",      # swipe_right - 后端支持  
+            "向上滑动",      # swipe_up - 后端支持
+            "向下滑动",      # swipe_down - 后端支持
+            "握拳",         # fist (静态手势) - 后端支持
+            "张开手掌",      # open_hand (静态手势) - 后端支持
+            "OK手势",       # ok (静态手势) - 后端支持
+            "食指",         # point (静态手势) - 后端支持
+            "双手手势",      # dual_hand - 后端支持
+            "无"           # 禁用该功能
+        ]
         actions = ["上一页", "下一页", "开始播放", "结束播放", "暂停", "继续"]
         
-        for action, gesture in zip(actions, gestures):
+        # 从后端配置读取默认设置
+        default_gestures = self.get_default_gesture_settings()
+        
+        for i, action in enumerate(actions):
             label = QLabel(f"{action}:")
             label.setStyleSheet("color: #222; font-size: 14px;")
             combo = QComboBox()
             combo.addItems(gestures)
-            combo.setCurrentText(gesture)
+            
+            # 设置默认值
+            default_gesture = default_gestures.get(action, gestures[i] if i < len(gestures) else "无")
+            combo.setCurrentText(default_gesture)
+            
             self.gesture_mappings[action] = combo
             mapping_layout.addRow(label, combo)
         
@@ -1078,4 +1156,91 @@ class MainWindow(QMainWindow):
             }
                            
         """)
+        
+    def get_default_gesture_settings(self):
+        """从后端配置获取默认手势设置"""
+        try:
+            # 创建后端到前端的映射
+            backend_to_frontend_action = {
+                "prev_slide": "上一页",
+                "next_slide": "下一页",
+                "fullscreen": "开始播放", 
+                "exit": "结束播放",
+                "pause": "暂停"
+            }
+            backend_to_frontend_gesture = {
+                "swipe_left": "向左滑动",
+                "swipe_right": "向右滑动",
+                "swipe_up": "向上滑动", 
+                "swipe_down": "向下滑动",
+                "fist": "握拳",
+                "open_hand": "张开手掌",
+                "ok": "OK手势",
+                "point": "食指",
+                "dual_hand": "双手手势"
+            }
+            
+            default_settings = {}
+            
+            # 如果有手势控制器，从配置中读取
+            if hasattr(self.controller, 'gesture_controller') and hasattr(self.controller.gesture_controller, 'gesture_configs'):
+                configs = self.controller.gesture_controller.gesture_configs
+                
+                for backend_action, config in configs.items():
+                    frontend_action = backend_to_frontend_action.get(backend_action)
+                    if frontend_action:
+                        if config.enabled:
+                            if config.gesture_type.value == "dynamic" and config.motion_pattern:
+                                frontend_gesture = backend_to_frontend_gesture.get(config.motion_pattern, "自定义手势")
+                                default_settings[frontend_action] = frontend_gesture                    
+                            elif config.gesture_type.value == "static" and config.finger_pattern:
+                                # 根据手指模式确定手势
+                                if config.finger_pattern == [0, 0, 0, 0, 0]:
+                                    default_settings[frontend_action] = "握拳"
+                                elif config.finger_pattern == [1, 1, 1, 1, 1]:
+                                    default_settings[frontend_action] = "张开手掌"
+                                elif config.finger_pattern == [1, 1, 0, 0, 0]:
+                                    default_settings[frontend_action] = "OK手势"
+                                elif config.finger_pattern == [0, 1, 0, 0, 0]:
+                                    default_settings[frontend_action] = "食指"
+                                else:
+                                    default_settings[frontend_action] = "无"
+                            elif config.gesture_type.value == "dual_hand":
+                                default_settings[frontend_action] = "双手手势"
+                            else:
+                                default_settings[frontend_action] = "无"
+                        else:
+                            default_settings[frontend_action] = "无"
+              # 确保所有前端动作都有默认值
+            all_actions = ["上一页", "下一页", "开始播放", "结束播放", "暂停", "继续"]
+            for action in all_actions:
+                if action not in default_settings:
+                    default_settings[action] = "无"
+            
+            # 根据实际的gesture_config.json，默认启用的是：
+            # next_slide (下一页): swipe_right
+            # prev_slide (上一页): swipe_left
+            # exit (退出): dual_hand
+            if not any(v != "无" for v in default_settings.values()):
+                default_settings = {
+                    "上一页": "向左滑动",      # prev_slide enabled=true
+                    "下一页": "向右滑动",      # next_slide enabled=true
+                    "开始播放": "无",          # fullscreen enabled=false
+                    "结束播放": "双手手势",     # exit enabled=true, dual_hand
+                    "暂停": "无",             # pause enabled=false                "继续": "无"             # 没有对应的后端配置
+                }
+                
+            return default_settings
+            
+        except Exception as e:
+            print(f"获取默认手势设置失败: {e}")
+            # 返回实际的默认配置：根据gesture_config.json
+            return {
+                "上一页": "向左滑动",      # prev_slide enabled=true
+                "下一页": "向右滑动",      # next_slide enabled=true
+                "开始播放": "无",          # fullscreen enabled=false
+                "结束播放": "双手手势",     # exit enabled=true, dual_hand
+                "暂停": "无",             # pause enabled=false
+                "继续": "无"             # 没有对应的后端配置
+            }
 

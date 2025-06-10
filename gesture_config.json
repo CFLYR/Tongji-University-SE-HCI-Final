@@ -20,7 +20,8 @@
     "hold_duration": 0.0,
     "enabled": true,
     "custom": false
-  },  "pause": {
+  },
+  "pause": {
     "name": "暂停/播放",
     "gesture_type": "static",
     "action": "play_pause",
@@ -48,23 +49,7 @@
     "enabled": true,
     "custom": false
   },
-  "laser": {
-    "name": "激光指示器",
-    "gesture_type": "static",
-    "action": "laser_pointer",
-    "finger_pattern": [
-      0,
-      1,
-      0,
-      0,
-      0
-    ],
-    "motion_pattern": null,
-    "confidence_threshold": 0.8,
-    "hold_duration": 0.0,
-    "enabled": true,
-    "custom": false
-  },  "fullscreen": {
+  "fullscreen": {
     "name": "全屏切换",
     "gesture_type": "static",
     "action": "fullscreen_toggle",
@@ -80,7 +65,8 @@
     "hold_duration": 1.0,
     "enabled": false,
     "custom": false
-  },  "number_1": {
+  },
+  "number_1": {
     "name": "跳转页面1",
     "gesture_type": "static",
     "action": "jump_to_page",
@@ -96,7 +82,8 @@
     "hold_duration": 1.5,
     "enabled": false,
     "custom": false
-  },  "number_2": {
+  },
+  "number_2": {
     "name": "跳转页面2",
     "gesture_type": "static",
     "action": "jump_to_page",
@@ -112,7 +99,8 @@
     "hold_duration": 1.5,
     "enabled": false,
     "custom": false
-  },  "number_3": {
+  },
+  "number_3": {
     "name": "跳转页面3",
     "gesture_type": "static",
     "action": "jump_to_page",
@@ -128,7 +116,8 @@
     "hold_duration": 1.5,
     "enabled": false,
     "custom": false
-  },  "number_4": {
+  },
+  "number_4": {
     "name": "跳转页面4",
     "gesture_type": "static",
     "action": "jump_to_page",
@@ -144,7 +133,8 @@
     "hold_duration": 1.5,
     "enabled": false,
     "custom": false
-  },  "number_5": {
+  },
+  "number_5": {
     "name": "跳转页面5",
     "gesture_type": "static",
     "action": "jump_to_page",
