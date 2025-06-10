@@ -14,6 +14,16 @@ import platform
 from typing import Optional, List
 from pathlib import Path
 
+# Windows窗口激活相关导入
+try:
+    import win32gui
+    import win32con
+    import win32process
+    WINDOWS_API_AVAILABLE = True
+except ImportError:
+    WINDOWS_API_AVAILABLE = False
+    print("⚠️ Windows API不可用，将使用备用的窗口激活方法")
+
 
 class PPTController:
     """PowerPoint控制器类"""

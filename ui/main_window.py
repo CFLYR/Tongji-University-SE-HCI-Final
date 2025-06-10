@@ -176,8 +176,7 @@ class MainWindow(QMainWindow):
                 return            # 开始播放
             if self.controller.start_presentation(self.controller.ppt_controller.current_ppt_path):
                 self.start_btn.setText("暂停")
-                self.update_status("正在播放PPT...")
-                # 打开悬浮窗
+                self.update_status("正在播放PPT...")                # 打开悬浮窗
                 if self.floating_window is None:
                     self.floating_window = PPTFloatingWindow()
                     # 连接悬浮窗的录像信号
@@ -185,13 +184,15 @@ class MainWindow(QMainWindow):
                     self.floating_window.recording_stopped.connect(self.on_recording_stopped)
                     self.floating_window.subtitle_updated.connect(self.on_subtitle_updated)
                     
+                    # 传递主控制器引用到悬浮窗，用于检查手势识别状态
+                    self.floating_window.set_main_controller(self.controller)
+                    
                     # 如果有演讲稿管理器，设置到悬浮窗
                     if hasattr(self.controller, 'speech_manager'):
                         self.floating_window.set_speech_manager(self.controller.speech_manager)
                 
                 self.floating_window.show()
                 
-                self.floating_window.show()
         else:
             self.controller.stop_presentation()
             self.start_btn.setText("开始播放")

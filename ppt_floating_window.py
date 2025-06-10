@@ -11,17 +11,21 @@ PPT Floating Window with Recording Features
 5. 悬浮窗内容录制选项
 6. 字幕录制选项
 7. 录制配置菜单
+8. 手势控制功能集成
 """
 
 from PySide6.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, 
                              QPushButton, QLabel, QTextEdit, QCheckBox, QSpinBox,
                              QGroupBox, QFormLayout, QComboBox, QSlider, QMenu,
                              QDialog, QDialogButtonBox, QFrame, QScrollArea)
-from PySide6.QtCore import Qt, Signal, QTimer
+from PySide6.QtCore import Qt, Signal, QTimer, QThread
+import os
+import threading
 from PySide6.QtGui import QIcon, QFont, QPixmap, QPainter, QColor
 import sys
 import os
 import json
+import threading
 from datetime import datetime
 from typing import Optional
 
@@ -34,14 +38,13 @@ except ImportError:
     print("⚠️ 录像功能模块未找到，将禁用录像功能")
     RECORDING_AVAILABLE = False
 
-# 导入手势控制相关模块
+# 导入手势控制模块
 try:
-    from unified_ppt_gesture_controller import UnifiedPPTGestureController
-    import threading
-    GESTURE_CONTROL_AVAILABLE = True
+    from unified_ppt_gesture_controller import UnifiedPPTGestureController, PPTAction
+    GESTURE_AVAILABLE = True
 except ImportError:
     print("⚠️ 手势控制模块未找到，将禁用手势控制功能")
-    GESTURE_CONTROL_AVAILABLE = False
+    GESTURE_AVAILABLE = False
 
 class RecordingConfigDialog(QDialog):
     """录制配置对话框"""
@@ -408,13 +411,10 @@ class RecordingStatusWidget(QWidget):
 
 class PPTFloatingWindow(QWidget):
     """PPT悬浮窗 - 集成录像功能"""
-    
-    # 定义信号
+      # 定义信号
     recording_started = Signal()
     recording_stopped = Signal(str)  # 录制文件路径
     subtitle_updated = Signal(str)
-    gesture_control_started = Signal()  # 手势控制开始信号
-    gesture_control_stopped = Signal()  # 手势控制停止信号
     
     def __init__(self):
         super().__init__()
@@ -433,10 +433,16 @@ class PPTFloatingWindow(QWidget):
             self.recording_config = None
         
         # 手势控制相关
-        if GESTURE_CONTROL_AVAILABLE:
-            self.gesture_controller = None
+        if GESTURE_AVAILABLE:
+            self.gesture_controller = UnifiedPPTGestureController()
             self.gesture_thread = None
-            self.gesture_running = False
+            self.is_gesture_active = False
+        else:
+            self.gesture_controller = None
+            self.is_gesture_active = False
+        
+        # 主控制器引用，用于检查手势识别状态
+        self.main_controller = None
         
         self.speech_manager = None
         # 拖拽相关
@@ -529,14 +535,15 @@ class PPTFloatingWindow(QWidget):
                     background: #0F4FDD;
                 }
             """)
-          ppt_layout.addWidget(self.btn_start)
+        ppt_layout.addWidget(self.btn_start)
         ppt_layout.addWidget(self.btn_prev)
         ppt_layout.addWidget(self.btn_next)
         main_layout.addLayout(ppt_layout)
-        
-        # 连接按钮事件
+          # 连接PPT控制按钮事件
         self.btn_start.clicked.connect(self.toggle_gesture_control)
-        # 其他按钮的事件可以根据需要添加
+        # 连接上一页和下一页按钮
+        self.btn_prev.clicked.connect(self.previous_slide)
+        self.btn_next.clicked.connect(self.next_slide)
         
         # 录制控制按钮区
         if RECORDING_AVAILABLE:
@@ -614,12 +621,16 @@ class PPTFloatingWindow(QWidget):
                 border: 1px solid #CCCCCC;
             }
         """)
-    
+        
     def set_speech_manager(self, speech_manager):
         """设置演讲稿管理器"""
         self.speech_manager = speech_manager
         if RECORDING_AVAILABLE and self.recording_assistant:
             self.recording_assistant.set_speech_manager(speech_manager)
+    
+    def set_main_controller(self, main_controller):
+        """设置主控制器引用"""
+        self.main_controller = main_controller
     
     def set_script_text(self, text: str):
         """设置文稿文本"""
@@ -729,7 +740,6 @@ class PPTFloatingWindow(QWidget):
             text = (latest_subtitle.corrected_text 
                    if latest_subtitle.is_corrected 
                    else latest_subtitle.text)
-            
             if hasattr(self, 'subtitle_display'):
                 self.subtitle_display.update_subtitle(text)
             self.subtitle_updated.emit(text)
@@ -744,34 +754,118 @@ class PPTFloatingWindow(QWidget):
         if dialog.exec() == QDialog.Accepted:
             self.recording_config = dialog.get_config()
             print("📝 录制配置已更新")
+    def previous_slide(self):
+        """上一张幻灯片"""
+        print("🔙 执行：上一张幻灯片")
+        try:
+            # 先尝试激活PPT窗口
+            self._activate_ppt_window()
+            
+            # 直接发送按键，不依赖控制器状态
+            import pyautogui as pt
+            pt.FAILSAFE = False
+            pt.PAUSE = 0.1
+            pt.press('left')  # 发送左箭头键（上一页）
+            print("✅ 成功发送按键：left 箭头（上一页）")
+                    
+        except Exception as e:
+            print(f"❌ 上一张幻灯片失败: {e}")
+            import traceback
+            traceback.print_exc()
     
+    def next_slide(self):
+        """下一张幻灯片"""
+        print("🔜 执行：下一张幻灯片")
+        try:
+            # 先尝试激活PPT窗口
+            self._activate_ppt_window()
+            
+            # 直接发送按键，不依赖控制器状态
+            import pyautogui as pt
+            pt.FAILSAFE = False
+            pt.PAUSE = 0.1
+            pt.press('right')  # 发送右箭头键（下一页）
+            print("✅ 成功发送按键：right 箭头（下一页）")
+                    
+        except Exception as e:
+            print(f"❌ 下一张幻灯片失败: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    def _activate_ppt_window(self):
+        """激活PPT窗口"""
+        try:
+            # 首先尝试通过Windows API激活PPT窗口
+            try:
+                import win32gui
+                import win32con
+                import time
+                
+                def enum_windows_callback(hwnd, windows):
+                    if win32gui.IsWindowVisible(hwnd):
+                        window_text = win32gui.GetWindowText(hwnd)
+                        class_name = win32gui.GetClassName(hwnd)
+                        # 检查是否是PowerPoint窗口
+                        if ('PowerPoint' in window_text or 
+                            'PP' in class_name or 
+                            'POWERPNT' in class_name.upper() or
+                            '幻灯片放映' in window_text or
+                            'Slide Show' in window_text):
+                            windows.append(hwnd)
+                    return True
+                
+                windows = []
+                win32gui.EnumWindows(enum_windows_callback, windows)
+                
+                if windows:
+                    # 激活找到的第一个PowerPoint窗口
+                    hwnd = windows[0]
+                    win32gui.SetForegroundWindow(hwnd)
+                    win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+                    time.sleep(0.2)  # 等待窗口激活
+                    print("✅ PPT窗口已激活")
+                    return True
+                else:
+                    print("⚠️ 未找到PPT窗口")
+                    
+            except ImportError:
+                print("⚠️ Windows API不可用，使用备用方法")
+            
+            # 备用方法：使用Alt+Tab切换窗口
+            import pyautogui as pt
+            import time
+            pt.hotkey('alt', 'tab')
+            time.sleep(0.2)
+            print("🔄 尝试切换到PPT窗口")
+            return True
+            
+        except Exception as e:
+            print(f"❌ 激活PPT窗口失败: {e}")
+            return False
     def toggle_gesture_control(self):
         """切换手势控制状态"""
-        if not GESTURE_CONTROL_AVAILABLE:
+        if not GESTURE_AVAILABLE:
             print("❌ 手势控制功能不可用")
             return
-            
-        if not self.gesture_running:
-            self.start_gesture_control()
-        else:
+        if self.is_gesture_active:
             self.stop_gesture_control()
+        else:
+            self.start_gesture_control()
     
     def start_gesture_control(self):
-        """开始手势控制"""
-        if not GESTURE_CONTROL_AVAILABLE:
+        """启动手势控制"""
+        if not GESTURE_AVAILABLE or self.is_gesture_active:
             return
-            
+        
+        # 检查主窗口的手势识别状态
+        if self.main_controller and hasattr(self.main_controller, 'gesture_controller'):
+            if not getattr(self.main_controller.gesture_controller, 'running', False):
+                print("❌ 手势识别未在主窗口启用，请先在主窗口勾选'启用手势识别'")
+                return
+        
         try:
-            # 创建手势控制器实例
-            self.gesture_controller = UnifiedPPTGestureController()
-            
-            # 设置运行标志
-            self.gesture_running = True
-            
-            # 创建并启动手势控制线程
-            self.gesture_thread = threading.Thread(target=self._run_gesture_control)
-            self.gesture_thread.daemon = True  # 设置为守护线程
-            self.gesture_thread.start()
+            # 首先检查并设置PPT演示状态
+            self._setup_ppt_presentation_state()
             
             # 更新按钮状态
             self.btn_start.setText("停止")
@@ -793,30 +887,63 @@ class PPTFloatingWindow(QWidget):
                 }
             """)
             
-            self.gesture_control_started.emit()
-            print("🎯 手势控制已开始")
+            # 启动手势控制线程
+            self.gesture_thread = threading.Thread(target=self._run_gesture_control, daemon=True)
+            self.is_gesture_active = True
+            self.gesture_thread.start()
+            
+            print("🖐️ 手势控制已启动")
             
         except Exception as e:
-            print(f"❌ 手势控制启动失败: {e}")
-            self.gesture_running = False
-    
-    def stop_gesture_control(self):
-        """停止手势控制"""
-        if not GESTURE_CONTROL_AVAILABLE:
+            print(f"❌ 启动手势控制失败: {e}")
+            self.is_gesture_active = False
+    def _setup_ppt_presentation_state(self):
+        """设置PPT演示状态"""
+        if not self.gesture_controller:
             return
             
         try:
-            # 停止手势控制
-            self.gesture_running = False
+            # 自动初始化PPT - 使用unified_ppt_gesture_controller的逻辑
+            ppt_controller = self.gesture_controller.ppt_controller
             
+            # 尝试自动找到并打开PPT文件
+            ppt_file = ppt_controller.auto_select_ppt()
+            if ppt_file:
+                print(f"📄 发现PPT文件: {os.path.basename(ppt_file)}")
+                print("🚀 自动启动PPT演示...")
+                
+                # 自动打开PPT文件
+                if ppt_controller.open_powerpoint_file(ppt_file):
+                    print("✅ PPT演示已启动，手势控制和按钮控制可用")
+                    ppt_controller.is_presentation_active = True
+                else:
+                    print("⚠️ PPT自动启动失败，请手动启动PPT")
+                    # 即使启动失败，也标记为活动以允许按钮控制
+                    ppt_controller.is_presentation_active = True
+            else:
+                print("📢 未找到PPT文件，请手动打开PPT进入演示模式")
+                # 假设用户会手动打开PPT
+                ppt_controller.is_presentation_active = True
+            
+            print("📢 提示：如果PPT没有自动进入演示模式，请手动按F5进入演示模式")
+            
+        except Exception as e:
+            print(f"⚠️ 设置PPT状态时出错: {e}")
+            # 即使出错，也允许尝试控制
+            if self.gesture_controller:
+                self.gesture_controller.ppt_controller.is_presentation_active = True
+    
+    def stop_gesture_control(self):
+        """停止手势控制"""
+        if not GESTURE_AVAILABLE or not self.is_gesture_active:
+            return
+        
+        try:
+            # 停止手势控制
+            self.is_gesture_active = False
             if self.gesture_controller:
                 self.gesture_controller.running = False
-                self.gesture_controller = None
             
-            # 等待线程结束（但不阻塞太久）
-            if self.gesture_thread and self.gesture_thread.is_alive():
-                self.gesture_thread.join(timeout=1.0)
-                
             # 更新按钮状态
             self.btn_start.setText("开始")
             self.btn_start.setStyleSheet("""
@@ -837,22 +964,28 @@ class PPTFloatingWindow(QWidget):
                 }
             """)
             
-            self.gesture_control_stopped.emit()
-            print("🎯 手势控制已停止")
+            # 等待线程结束
+            if self.gesture_thread and self.gesture_thread.is_alive():
+                self.gesture_thread.join(timeout=1.0)
+            
+            print("🛑 手势控制已停止")
             
         except Exception as e:
-            print(f"❌ 手势控制停止时出错: {e}")
+            print(f"❌ 停止手势控制失败: {e}")
     
     def _run_gesture_control(self):
-        """在线程中运行手势控制"""
+        """在后台线程中运行手势控制"""
         try:
             if self.gesture_controller:
+                # 重置手势控制器状态
+                self.gesture_controller.running = True
+                # 运行手势控制（这会阻塞直到停止）
                 self.gesture_controller.run()
         except Exception as e:
-            print(f"❌ 手势控制运行时出错: {e}")
+            print(f"❌ 手势控制运行出错: {e}")
         finally:
-            # 确保在线程结束时重置状态
-            self.gesture_running = False
+            # 确保状态正确重置
+            self.is_gesture_active = False
     
     def get_recording_status(self):
         """获取录制状态"""
@@ -880,13 +1013,18 @@ class PPTFloatingWindow(QWidget):
     def mouseReleaseEvent(self, event):
         """鼠标释放事件 - 结束拖拽"""
         self._drag_active = False
-    
+        
     def closeEvent(self, event):
         """关闭事件"""
         # 如果正在录制，先停止录制
         if RECORDING_AVAILABLE and self.recording_assistant and self.recording_assistant.is_recording:
             self.stop_recording()
-          # 清理字幕显示
+        
+        # 如果手势控制正在运行，先停止手势控制
+        if GESTURE_AVAILABLE and self.is_gesture_active:
+            self.stop_gesture_control()
+        
+        # 清理字幕显示
         if hasattr(self, 'subtitle_display'):
             self.subtitle_display.clear_subtitles()
         
