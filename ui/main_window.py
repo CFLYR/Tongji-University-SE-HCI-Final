@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-                             QPushButton, QLabel, QStackedWidget, QFileDialog,
-                             QSpinBox, QComboBox, QGroupBox, QFormLayout, QSpacerItem,
-                             QSizePolicy, QCheckBox)
+                               QPushButton, QLabel, QStackedWidget, QFileDialog,
+                               QSpinBox, QComboBox, QGroupBox, QFormLayout, QSpacerItem,
+                               QSizePolicy, QCheckBox, QDialog,QTextEdit,QDialogButtonBox)
 from PySide6.QtCore import Qt, Signal, QTimer
 from PySide6.QtGui import QIcon, QPixmap, QImage
 from PySide6.QtCore import QSize
@@ -13,17 +13,17 @@ import numpy as np
 import win32com.client
 import os
 
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("大学生Presentation助手")
         self.setWindowFlags(Qt.FramelessWindowHint)
         self.setMinimumSize(1200, 800)
-        
+
         # 初始化主控制器
         self.controller = MainController()
-        
-        
+
         # 创建主窗口部件
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
@@ -50,29 +50,28 @@ class MainWindow(QMainWindow):
         # 创建中间控制面板
         center_panel = self.create_center_panel()
         content_layout.addWidget(center_panel, 3)
-        
+
         # 创建右侧设置面板
         right_panel = self.create_right_panel()
         content_layout.addWidget(right_panel, 1)
-        
+
         main_layout.addLayout(content_layout)
         # 连接信号
         self.connect_signals()
-        
+
         # 设置样式
         self.load_styles()
-        
-        
+
         # 创建状态更新定时器
         self.status_timer = QTimer()
         self.status_timer.timeout.connect(self.update_status)
         self.status_timer.start(1000)  # 每秒更新一次状态
-        
+
         # 启动系统
         self.controller.start_system()
-        
+
         self.floating_window = None  # 悬浮窗实例
-    
+
     def connect_signals(self):
         # 连接控制器信号
         self.controller.ppt_file_opened.connect(self.on_ppt_file_opened)
@@ -87,20 +86,23 @@ class MainWindow(QMainWindow):
         self.controller.gesture_enabled.connect(self.on_gesture_enabled)
         self.controller.system_status_changed.connect(self.on_system_status_changed)
         self.controller.error_occurred.connect(self.on_error_occurred)
-        
+        # 连接语音控制ppt的信号
+        self.controller.voice_recognition_started.connect(self.on_voice_recognition_started)
+        self.controller.voice_recognition_stopped.connect(self.on_voice_recognition_stopped)
+
         # 连接UI控件信号
         self.open_ppt_btn.clicked.connect(self.select_ppt_file)
         self.start_btn.clicked.connect(self.toggle_presentation)
         self.gesture_checkbox.stateChanged.connect(self.toggle_gesture_detection)
         self.voice_checkbox.stateChanged.connect(self.toggle_voice_recognition)
         self.interval_spin.valueChanged.connect(self.update_detection_interval)
-        
+
         # 连接手势映射下拉框
         for action, combo in self.gesture_mappings.items():
             combo.currentTextChanged.connect(
                 lambda text, a=action: self.update_gesture_mapping(a, text)
             )
-    
+
     def export_first_slide_as_image(self, ppt_path, output_dir="slide_previews"):
         # 生成绝对路径
         ppt_path = os.path.abspath(ppt_path)
@@ -127,7 +129,7 @@ class MainWindow(QMainWindow):
 
     def show_ppt_first_slide_preview(self, img_path):
         self.slide_image_label.show()
-       #self.center_title.hide()
+        # self.center_title.hide()
         self.center_tip.hide()
         self.file_path_label.hide()
         self.open_ppt_btn.hide()
@@ -140,7 +142,6 @@ class MainWindow(QMainWindow):
         ppt_filename = os.path.basename(ppt_path)
         self.slide_filename_label.setText(f"PPT文件名：{ppt_filename}")
         self.slide_filename_label.show()
-
 
     def select_ppt_file(self):
         """选择PPT文件"""
@@ -157,14 +158,12 @@ class MainWindow(QMainWindow):
 
             img_path = self.export_first_slide_as_image(file_path)
             self.show_ppt_first_slide_preview(img_path)
-            
-            
+
     def toggle_max_restore(self):
         if self.isMaximized():
             self.showNormal()
         else:
             self.showMaximized()
-
 
     def toggle_presentation(self):
         """切换演示状态"""
@@ -173,24 +172,24 @@ class MainWindow(QMainWindow):
             # 检查是否已选择PPT文件
             if not self.controller.ppt_controller.current_ppt_path:
                 self.handle_error("请先选择PPT文件")
-                return            # 开始播放
+                return  # 开始播放
             if self.controller.start_presentation(self.controller.ppt_controller.current_ppt_path):
                 self.start_btn.setText("暂停")
-                self.update_status("正在播放PPT...")                # 打开悬浮窗
+                self.update_status("正在播放PPT...")  # 打开悬浮窗
                 if self.floating_window is None:
                     self.floating_window = PPTFloatingWindow()
                     # 连接悬浮窗的录像信号
                     self.floating_window.recording_started.connect(self.on_recording_started)
                     self.floating_window.recording_stopped.connect(self.on_recording_stopped)
                     self.floating_window.subtitle_updated.connect(self.on_subtitle_updated)
-                    
+
                     # 传递主控制器引用到悬浮窗，用于检查手势识别状态
                     self.floating_window.set_main_controller(self.controller)
-                    
+
                     # 如果有演讲稿管理器，设置到悬浮窗
                     if hasattr(self.controller, 'speech_manager'):
                         self.floating_window.set_speech_manager(self.controller.speech_manager)
-                
+
                 self.floating_window.show()
         else:
             self.controller.stop_presentation()
@@ -214,28 +213,75 @@ class MainWindow(QMainWindow):
 
     def mouseReleaseEvent(self, event):
         self._drag_active = False
+
     def toggle_gesture_detection(self, enabled: bool):
-            """切换手势检测状态"""
-            self.controller.toggle_gesture_detection(enabled)
-            status = "开启" if enabled else "关闭"
-            self.update_status(f"手势检测已{status}")
-    def toggle_voice_recognition(self, state):
-        """切换语音识别状态"""        
-        # TODO: 实现语音识别功能
-        pass
-    
+        """切换手势检测状态"""
+        self.controller.toggle_gesture_detection(enabled)
+        status = "开启" if enabled else "关闭"
+        self.update_status(f"手势检测已{status}")
+
+    def toggle_voice_recognition(self, enabled: bool):
+        """切换语音识别状态"""
+        next_page_keywords = []
+
+        if enabled:
+            # 创建多行文本输入对话框
+            dialog = QDialog(self)
+            dialog.setWindowTitle("设置翻页关键词")
+            dialog.setMinimumSize(400, 300)
+
+            layout = QVBoxLayout(dialog)
+
+            # 添加说明标签
+            label = QLabel("请输入触发下一页的语音关键词（每行一个词）:")
+            layout.addWidget(label)
+
+            # 添加文本框
+            text_edit = QTextEdit()
+            text_edit.setPlaceholderText("例如：下一页\n下一张\n继续")
+            layout.addWidget(text_edit)
+
+            # 添加按钮框
+            button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+            button_box.accepted.connect(dialog.accept)
+            button_box.rejected.connect(dialog.reject)
+            layout.addWidget(button_box)
+
+            # 显示对话框并等待用户操作
+            if dialog.exec() == QDialog.Accepted:
+                # 获取输入的文本并按行分割
+                text = text_edit.toPlainText().strip()
+                if text:
+                    next_page_keywords = [line.strip() for line in text.split('\n') if line.strip()]
+                else:
+                    # 用户未输入内容，保持禁用状态
+                    enabled = False
+            else:
+                # 用户取消操作，保持禁用状态
+                enabled = False
+
+        # 更新控制器状态
+        self.controller.toggle_voice_recognition(enabled, next_page_keywords)
+        self.update_status(f"语音识别已{'开启' if enabled else '关闭'}")
+
+        # 如果用户取消了操作，需要重置复选框状态
+        if not enabled:
+            self.voice_checkbox.blockSignals(True)  # 防止触发信号循环
+            self.voice_checkbox.setChecked(False)
+            self.voice_checkbox.blockSignals(False)
+
     def update_detection_interval(self, interval: int):
         """更新检测间隔"""
         self.controller.update_detection_interval(interval)
         self.update_status(f"已更新检测间隔: {interval}ms")
-        
+
     def update_gesture_mapping(self, action: str, gesture: str):
         """更新手势映射"""
         try:
             # 创建前端到后端的映射
             action_mapping = {
                 "上一页": "prev_slide",
-                "下一页": "next_slide", 
+                "下一页": "next_slide",
                 "开始播放": "fullscreen",
                 "结束播放": "exit",
                 "暂停": "pause",
@@ -243,7 +289,7 @@ class MainWindow(QMainWindow):
             }
             gesture_mapping = {
                 "向左滑动": "swipe_left",
-                "向右滑动": "swipe_right", 
+                "向右滑动": "swipe_right",
                 "向上滑动": "swipe_up",
                 "向下滑动": "swipe_down",
                 "握拳": "fist",
@@ -253,14 +299,15 @@ class MainWindow(QMainWindow):
                 "双手手势": "dual_hand",
                 "无": "none"
             }
-            
+
             backend_action = action_mapping.get(action, action)
             backend_gesture = gesture_mapping.get(gesture, gesture)
-            
+
             # 更新后端配置
-            if hasattr(self.controller, 'gesture_controller') and hasattr(self.controller.gesture_controller, 'gesture_configs'):
+            if hasattr(self.controller, 'gesture_controller') and hasattr(self.controller.gesture_controller,
+                                                                          'gesture_configs'):
                 configs = self.controller.gesture_controller.gesture_configs
-                
+
                 # 找到对应的配置并更新
                 if backend_action in configs:
                     config = configs[backend_action]
@@ -284,7 +331,7 @@ class MainWindow(QMainWindow):
                         elif config.gesture_type.value == "dual_hand":
                             # 双手手势不需要设置finger_pattern
                             pass
-                    
+
                     # 保存配置
                     self.controller.gesture_controller.save_gesture_configs()
                     self.update_status(f"已更新手势映射: {action} -> {gesture}")
@@ -292,19 +339,21 @@ class MainWindow(QMainWindow):
                     self.update_status(f"未找到手势配置: {backend_action}", True)
             else:
                 self.update_status("手势控制器未初始化", True)
-                
+
         except Exception as e:
             self.update_status(f"更新手势映射失败: {str(e)}", True)
-    
+
     def update_status(self, message: str = None, is_error: bool = False):
         """更新状态显示"""
         if message is not None:
             if is_error:
-                self.status_label.setStyleSheet("background-color: #FFEBEE; color: #D32F2F; border-radius: 6px; padding: 8px;")
+                self.status_label.setStyleSheet(
+                    "background-color: #FFEBEE; color: #D32F2F; border-radius: 6px; padding: 8px;")
             else:
-                self.status_label.setStyleSheet("background-color: #E8F5E9; color: #388E3C; border-radius: 6px; padding: 8px;")
+                self.status_label.setStyleSheet(
+                    "background-color: #E8F5E9; color: #388E3C; border-radius: 6px; padding: 8px;")
             self.status_label.setText(message)
-        
+
         # 更新运行时间
         status = self.controller.get_system_status()
         runtime = int(status['runtime'])
@@ -312,42 +361,53 @@ class MainWindow(QMainWindow):
         minutes = (runtime % 3600) // 60
         seconds = runtime % 60
         self.duration_label.setText(f"演示时长: {hours:02d}:{minutes:02d}:{seconds:02d}")
-    
+
     # 信号处理函数
     def on_ppt_file_opened(self, file_path: str):
         """PPT文件打开处理"""
         self.file_path_label.setText(file_path)
         self.start_btn.setEnabled(True)
         self.update_status("PPT文件已选择")
-    
+
     def on_presentation_started(self):
         """演示开始处理"""
         self.start_btn.setText("暂停")
         self.update_status("正在播放PPT...")
-    
+
     def on_presentation_stopped(self):
         """演示停止处理"""
         self.start_btn.setText("播放")
         self.update_status("演示已停止")
-    
+
     def on_slide_changed(self, slide_number: int):
         """幻灯片切换处理"""
         self.current_page_label.setText(f"当前页码: {slide_number}")
-    
+
     def on_gesture_detection_started(self):
         """手势检测开始处理"""
         self.gesture_status_label.setText("✔ 手势识别已启用\n正在检测手势...")
-    
+
     def on_gesture_detection_stopped(self):
         """手势检测停止处理"""
         self.gesture_status_label.setText("✘ 手势识别已禁用")
-    
+
     def on_gesture_detected(self, gesture_name: str, confidence: float):
         """手势检测处理"""
         # 可以在这里添加手势检测的视觉反馈
         pass
-    
-    
+
+    def on_voice_recognition_started(self):
+        """状态提示 语音识别已启用"""
+        self.voice_status_label.setText("✔ 语音识别已启用\n等待语音指令...")
+
+    def on_voice_recognition_stopped(self):
+        """状态提示 语音识别已关闭"""
+        self.voice_status_label.setText("✘ 手势识别已关闭")
+
+    def on_voice_recognized(self):
+        """"""
+        pass
+
     def on_config_changed(self, config_name: str):
         """配置更改处理"""
         if config_name == "all":
@@ -356,64 +416,65 @@ class MainWindow(QMainWindow):
         else:
             # 更新特定配置显示
             pass
-    
+
     def on_gesture_enabled(self, gesture_name: str, enabled: bool):
         """手势启用状态更改处理"""
         # 更新手势启用状态显示
         pass
-    
+
     def on_system_status_changed(self, status: str):
         """系统状态更改处理"""
         self.update_status(status)
-    
+
     def on_error_occurred(self, error: str):
         """错误处理"""
         self.handle_error(error)
-        
+
     def on_recording_started(self):
         """录像开始处理"""
         self.update_status("录像已开始", is_error=False)
         # 显示录像状态指示器
         self.recording_status_label.setText("🎥 正在录制")
-        self.recording_status_label.setStyleSheet("background-color: #FFEBEE; color: #D32F2F; border-radius: 6px; padding: 8px;")
+        self.recording_status_label.setStyleSheet(
+            "background-color: #FFEBEE; color: #D32F2F; border-radius: 6px; padding: 8px;")
         self.recording_status_label.show()
         print("🎥 录像已开始")
-    
+
     def on_recording_stopped(self, video_path: str):
         """录像停止处理"""
         self.update_status(f"录像已停止，文件保存到: {video_path}", is_error=False)
         # 隐藏录像状态指示器
         self.recording_status_label.hide()
         print(f"🎬 录像已停止，保存到: {video_path}")
-    
+
     def on_subtitle_updated(self, subtitle_text: str):
         """字幕更新处理"""
         # 可以在这里显示字幕或发送给演讲稿管理器进行文稿修正
         if hasattr(self.controller, 'speech_manager') and self.controller.speech_manager:
             # 发送给演讲稿管理器进行处理
             self.controller.speech_manager.process_real_time_text(subtitle_text)
-        
+
         # 更新录像状态显示包含字幕信息
         if hasattr(self, 'recording_status_label') and self.recording_status_label.isVisible():
             # 截取字幕前20个字符用于显示
             subtitle_preview = subtitle_text[:20] + "..." if len(subtitle_text) > 20 else subtitle_text
             self.recording_status_label.setText(f"🎥 录制中 📝 {subtitle_preview}")
-        
+
         print(f"📝 字幕更新: {subtitle_text}")
-    
+
     def toggle_quick_recording(self):
         """快捷录像功能"""
         if not hasattr(self, 'floating_window') or self.floating_window is None:
             self.update_status("请先开始PPT演示以显示悬浮窗", is_error=True)
             return
-        
+
         # 获取录像状态
         recording_status = self.floating_window.get_recording_status()
-        
+
         if not recording_status.get('recording_available', False):
             self.update_status("录像功能不可用", is_error=True)
             return
-        
+
         if recording_status.get('is_recording', False):
             # 停止录像
             self.floating_window.stop_recording()
@@ -454,51 +515,47 @@ class MainWindow(QMainWindow):
                     background-color: #388E3C;
                 }
             """)
-    
+
     def closeEvent(self, event):
         """窗口关闭事件处理"""
         try:
             # 停止所有控制器
             if self.controller.ppt_controller.is_active():
                 self.controller.exit_presentation()
-            if hasattr(self.controller, 'gesture_controller') and hasattr(self.controller.gesture_controller, 'running'):
+            if hasattr(self.controller, 'gesture_controller') and hasattr(self.controller.gesture_controller,
+                                                                          'running'):
                 self.controller.gesture_controller.running = False
             event.accept()
         except Exception as e:
             self.handle_error(f"关闭时发生错误: {str(e)}")
             event.accept()
 
-
-
-
-
     def create_top_bar(self):
         top_bar = QWidget()
         top_layout = QHBoxLayout(top_bar)
 
         top_bar.setObjectName("topBar")
-        top_bar.setStyleSheet("#topBar { background-color: white; }")  
+        top_bar.setStyleSheet("#topBar { background-color: white; }")
 
         top_layout.setContentsMargins(20, 0, 20, 0)
         top_layout.setSpacing(20)
-        top_layout.setAlignment(Qt.AlignVCenter)  
+        top_layout.setAlignment(Qt.AlignVCenter)
 
         # 左侧：应用图标+标题
         icon_label = QLabel()
         icon_label.setPixmap(QIcon("resources/icons/monitor.svg").pixmap(24, 24))
-        icon_label.setFixedSize(28, 28) 
+        icon_label.setFixedSize(28, 28)
         icon_label.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
         title_label = QLabel("PPT播放助手")
         title_label.setStyleSheet("font-size: 20px; font-weight: bold; color: #165DFF;")
-        title_label.setFixedHeight(28) 
-        
+        title_label.setFixedHeight(28)
 
         left_layout = QHBoxLayout()
         left_layout.setContentsMargins(0, 0, 0, 0)
         left_layout.setAlignment(Qt.AlignVCenter)
         left_layout.addWidget(icon_label)
         left_layout.addWidget(title_label)
-        #left_layout.addStretch()
+        # left_layout.addStretch()
 
         left_widget = QWidget()
         left_widget.setLayout(left_layout)
@@ -506,7 +563,7 @@ class MainWindow(QMainWindow):
         top_layout.addWidget(left_widget, 1)
 
         # 右侧：按钮
-        btn_open = QPushButton()   
+        btn_open = QPushButton()
         btn_open.setObjectName("windowControlButton")
         btn_open.setIcon(QIcon("resources/icons/ppt.svg"))
         btn_open.setFixedHeight(28)
@@ -555,18 +612,17 @@ class MainWindow(QMainWindow):
         right_layout.addWidget(btn_max)
         right_layout.addWidget(btn_close)
 
-
         right_widget = QWidget()
         right_widget.setLayout(right_layout)
-        right_widget.setFixedHeight(40)  
+        right_widget.setFixedHeight(40)
         top_layout.addWidget(right_widget, 0)
 
         return top_bar
-    
+
     def create_center_panel(self):
         panel = QGroupBox()
         panel.setObjectName("centerPanel")
-        panel.setStyleSheet("#centerPanel { background-color: #FCFCFC; }")  
+        panel.setStyleSheet("#centerPanel { background-color: #FCFCFC; }")
 
         layout = QVBoxLayout(panel)
         layout.setSpacing(20)
@@ -605,7 +661,7 @@ class MainWindow(QMainWindow):
         self.slide_image_label.setMinimumSize(427, 240)
         self.slide_image_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.slide_image_label.setScaledContents(True)
-        #elf.slide_image_label.hide()
+        # elf.slide_image_label.hide()
         layout.addWidget(self.slide_image_label, stretch=1)
         self.slide_filename_label = QLabel("")
         self.slide_filename_label.setAlignment(Qt.AlignCenter)
@@ -635,14 +691,14 @@ class MainWindow(QMainWindow):
 
         panel.setMinimumWidth(460)
 
-        panel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)   
+        panel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         self.slide_image_label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
         return panel
-        
+
     def create_right_panel(self):
         panel = QGroupBox()
         panel.setObjectName("rightPanel")
-        panel.setStyleSheet("#rightPanel { background-color: white; }")  
+        panel.setStyleSheet("#rightPanel { background-color: white; }")
         layout = QVBoxLayout(panel)
         layout.setSpacing(15)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -653,7 +709,7 @@ class MainWindow(QMainWindow):
         info_layout = QVBoxLayout(info_group)
         info_layout.setSpacing(0)
         info_layout.setContentsMargins(0, 0, 0, 0)
-     
+
         info_title_layout = QHBoxLayout()
         info_title_layout.setSpacing(4)
         info_svg_widget = QSvgWidget("resources/icons/info.svg")
@@ -681,7 +737,7 @@ class MainWindow(QMainWindow):
         info_widget_layout.addWidget(self.current_page_label)
         info_widget_layout.addWidget(self.duration_label)
         info_widget_layout.addWidget(self.remain_label)
-        info_layout.addWidget(info_widget)  
+        info_layout.addWidget(info_widget)
         layout.addWidget(info_group)
 
         # 操作记录
@@ -698,7 +754,7 @@ class MainWindow(QMainWindow):
         record_svg_widget.setFixedSize(20, 20)
         record_title_label = QLabel("操作记录")
         record_title_label.setStyleSheet("font-size: 18px; font-weight: bold; margin-left: 1px;color: #1a1a1a")
-        record_title_layout.addWidget(record_svg_widget   )
+        record_title_layout.addWidget(record_svg_widget)
         record_title_layout.addWidget(record_title_label)
         record_title_layout.addStretch()
 
@@ -725,7 +781,7 @@ class MainWindow(QMainWindow):
         status_group = QGroupBox("")
         status_layout = QVBoxLayout(status_group)
         status_layout.setSpacing(0)
-        status_layout.setContentsMargins(0, 0, 0, 0)  
+        status_layout.setContentsMargins(0, 0, 0, 0)
         # 顶部自定义标题栏
         status_title_layout = QHBoxLayout()
         status_title_layout.setSpacing(4)
@@ -737,21 +793,24 @@ class MainWindow(QMainWindow):
         status_title_layout.addWidget(status_title_label)
         status_layout.addLayout(status_title_layout)
         status_layout.addSpacing(15)
-        status_layout.addStretch()        # 添加系统状态标签
+        status_layout.addStretch()  # 添加系统状态标签
         self.status_label = QLabel("系统就绪")
         self.status_label.setStyleSheet("background-color: #E8F5E9; color: #388E3C; border-radius: 6px; padding: 8px;")
         status_layout.addWidget(self.status_label)
 
         self.gesture_status_label = QLabel("")
-        self.gesture_status_label.setStyleSheet("background-color: #E8F5E9; color: #388E3C; border-radius: 6px; padding: 8px;")
+        self.gesture_status_label.setStyleSheet(
+            "background-color: #E8F5E9; color: #388E3C; border-radius: 6px; padding: 8px;")
         self.voice_status_label = QLabel("")
-        self.voice_status_label.setStyleSheet("background-color: #E3F2FD; color: #1976D2; border-radius: 6px; padding: 8px;")
-        
+        self.voice_status_label.setStyleSheet(
+            "background-color: #E3F2FD; color: #1976D2; border-radius: 6px; padding: 8px;")
+
         # 录像状态指示器
         self.recording_status_label = QLabel("")
-        self.recording_status_label.setStyleSheet("background-color: #FFF3E0; color: #F57C00; border-radius: 6px; padding: 8px;")
+        self.recording_status_label.setStyleSheet(
+            "background-color: #FFF3E0; color: #F57C00; border-radius: 6px; padding: 8px;")
         self.recording_status_label.hide()  # 初始隐藏
-        
+
         status_layout.addWidget(self.gesture_status_label)
         status_layout.addWidget(self.voice_status_label)
         status_layout.addWidget(self.recording_status_label)
@@ -767,7 +826,7 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout(panel)
         layout.setSpacing(15)
         layout.setContentsMargins(10, 10, 10, 10)
-      
+
         # 播放控制
         control_group = QGroupBox("")
         main_vlayout = QVBoxLayout(control_group)
@@ -780,23 +839,20 @@ class MainWindow(QMainWindow):
         control_svg_widget.setFixedSize(20, 20)
         control_title_label = QLabel("播放控制")
         control_title_label.setStyleSheet("font-size: 18px; font-weight: bold; margin-left: 1px;color: #1a1a1a")
-        control_title_layout.addWidget(control_svg_widget   )
+        control_title_layout.addWidget(control_svg_widget)
         control_title_layout.addWidget(control_title_label)
         control_title_layout.addStretch()
 
         main_vlayout.addLayout(control_title_layout)
 
-
         control_layout = QHBoxLayout()
         control_layout.setSpacing(15)
-
-       
 
         self.start_btn = QPushButton("开始播放")
         self.start_btn.setIcon(QIcon("resources/icons/运行.svg"))
         self.start_btn.setIconSize(QSize(80, 20))
         self.start_btn.setMinimumHeight(28)
-        self.start_btn.setMaximumWidth(100)        
+        self.start_btn.setMaximumWidth(100)
         self.start_btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.start_btn.setStyleSheet("margin-left:0px;margin-right:0px;")
 
@@ -804,13 +860,13 @@ class MainWindow(QMainWindow):
 
         main_vlayout.addLayout(control_layout)
         layout.addWidget(control_group)
-        
+
         # 手势控制
         gesture_group = QGroupBox("")
         gesture_layout = QVBoxLayout(gesture_group)
         gesture_layout.setSpacing(10)
-        gesture_layout.setContentsMargins(0, 0, 0, 0)  
-        
+        gesture_layout.setContentsMargins(0, 0, 0, 0)
+
         # 顶部自定义标题栏
         gesture_title_layout = QHBoxLayout()
         gesture_title_layout.setSpacing(4)
@@ -818,16 +874,16 @@ class MainWindow(QMainWindow):
         gesture_svg_widget.setFixedSize(20, 20)
         gesture_title_label = QLabel("手势控制")
         gesture_title_label.setStyleSheet("font-size: 18px; font-weight: bold; margin-left: 1px;color: #1a1a1a")
-        gesture_title_layout.addWidget(gesture_svg_widget   )
+        gesture_title_layout.addWidget(gesture_svg_widget)
         gesture_title_layout.addWidget(gesture_title_label)
         gesture_title_layout.addStretch()
 
         gesture_layout.addLayout(gesture_title_layout)
 
-
         # 手势功能映射
         mapping_group = QGroupBox("")
-        mapping_group.setStyleSheet("QGroupBox { margin-top: 10px; padding-top: 10px; border: none; ;background-color: #F5F5F5;}")
+        mapping_group.setStyleSheet(
+            "QGroupBox { margin-top: 10px; padding-top: 10px; border: none; ;background-color: #F5F5F5;}")
         mapping_layout = QFormLayout(mapping_group)
         mapping_layout.setSpacing(10)
         mapping_layout.setContentsMargins(0, 0, 0, 0)
@@ -835,35 +891,35 @@ class MainWindow(QMainWindow):
         self.gesture_mappings = {}
         # 只包含后端实际支持的手势选项
         gestures = [
-            "向左滑动",      # swipe_left - 后端支持
-            "向右滑动",      # swipe_right - 后端支持  
-            "向上滑动",      # swipe_up - 后端支持
-            "向下滑动",      # swipe_down - 后端支持
-            "握拳",         # fist (静态手势) - 后端支持
-            "张开手掌",      # open_hand (静态手势) - 后端支持
-            "OK手势",       # ok (静态手势) - 后端支持
-            "食指",         # point (静态手势) - 后端支持
-            "双手手势",      # dual_hand - 后端支持
-            "无"           # 禁用该功能
+            "向左滑动",  # swipe_left - 后端支持
+            "向右滑动",  # swipe_right - 后端支持
+            "向上滑动",  # swipe_up - 后端支持
+            "向下滑动",  # swipe_down - 后端支持
+            "握拳",  # fist (静态手势) - 后端支持
+            "张开手掌",  # open_hand (静态手势) - 后端支持
+            "OK手势",  # ok (静态手势) - 后端支持
+            "食指",  # point (静态手势) - 后端支持
+            "双手手势",  # dual_hand - 后端支持
+            "无"  # 禁用该功能
         ]
         actions = ["上一页", "下一页", "开始播放", "结束播放", "暂停", "继续"]
-        
+
         # 从后端配置读取默认设置
         default_gestures = self.get_default_gesture_settings()
-        
+
         for i, action in enumerate(actions):
             label = QLabel(f"{action}:")
             label.setStyleSheet("color: #222; font-size: 14px;")
             combo = QComboBox()
             combo.addItems(gestures)
-            
+
             # 设置默认值
             default_gesture = default_gestures.get(action, gestures[i] if i < len(gestures) else "无")
             combo.setCurrentText(default_gesture)
-            
+
             self.gesture_mappings[action] = combo
             mapping_layout.addRow(label, combo)
-        
+
         gesture_layout.addWidget(mapping_group)
 
         # 检测间隔设置
@@ -871,7 +927,7 @@ class MainWindow(QMainWindow):
         interval_layout = QFormLayout(interval_group)
         interval_layout.setSpacing(10)
         interval_layout.setContentsMargins(0, 0, 0, 0)
-        
+
         self.interval_spin = QSpinBox()
         self.interval_spin.setRange(50, 1000)
         self.interval_spin.setSingleStep(100)
@@ -883,7 +939,7 @@ class MainWindow(QMainWindow):
         # 手势检测按钮
         self.gesture_checkbox = QCheckBox("启用手势识别")
         self.gesture_checkbox.setStyleSheet("QCheckBox {}")
-        
+
         gesture_layout.addWidget(self.gesture_checkbox, alignment=Qt.AlignLeft)
         layout.addWidget(gesture_group)
 
@@ -899,9 +955,9 @@ class MainWindow(QMainWindow):
         voice_svg_widget.setFixedSize(20, 20)
         voice_title_label = QLabel("语音识别")
         voice_title_label.setStyleSheet("font-size: 18px; font-weight: bold; margin-left: 1px;color: #1a1a1a")
-        voice_title_layout.addWidget(voice_svg_widget   )
+        voice_title_layout.addWidget(voice_svg_widget)
         voice_title_layout.addWidget(voice_title_label)
-        voice_title_layout.addStretch()       
+        voice_title_layout.addStretch()
 
         voice_layout.addLayout(voice_title_layout)
 
@@ -911,33 +967,32 @@ class MainWindow(QMainWindow):
 
         voice_layout.addStretch()
 
-        # 手势检测按钮
+        # 语音识别按钮
         self.voice_checkbox = QCheckBox("启用语音识别")
         self.voice_checkbox.setStyleSheet("QCheckBox {}")
-        
+
         voice_layout.addWidget(self.voice_checkbox, alignment=Qt.AlignLeft)
         layout.addWidget(voice_group)
-        
+
         # 添加弹性空间
         layout.addStretch()
         return panel
-    
-    
+
     # def update_video(self):
     #     """更新视频显示"""
     #     ret, frame = self.cap.read()
     #     if ret:
     #         # 处理帧
     #         frame = self.controller.process_frame(frame)
-            
+
     #         # 转换颜色空间
     #         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            
+
     #         # 转换为QImage
     #         h, w, ch = frame.shape
     #         bytes_per_line = ch * w
     #         qt_image = QImage(frame.data, w, h, bytes_per_line, QImage.Format_RGB888)
-            
+
     #         # 更新预览标签
     #         self.preview_label.setPixmap(QPixmap.fromImage(qt_image).scaled(
     #             self.preview_label.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation
@@ -949,13 +1004,13 @@ class MainWindow(QMainWindow):
             # 更新幻灯片信息
             self.slide_count_label.setText(f"幻灯片总数: {self.controller.ppt_controller.get_status()['total_slides']}")
             self.current_page_label.setText(f"当前页码: {self.controller.ppt_controller.get_status()['current_slide']}")
-            
+
             # 更新预览按钮状态
             for i, btn in enumerate(self.slide_previews):
                 if i < len(self.slide_previews):
                     btn.setEnabled(True)
-                    btn.clicked.connect(lambda x, idx=i+1: self.jump_to_slide(idx))
-    
+                    btn.clicked.connect(lambda x, idx=i + 1: self.jump_to_slide(idx))
+
     def jump_to_slide(self, slide_number: int):
         """跳转到指定幻灯片"""
         try:
@@ -963,25 +1018,25 @@ class MainWindow(QMainWindow):
             self.update_status(f"已跳转到第 {slide_number} 页")
         except Exception as e:
             self.handle_error(f"跳转失败: {str(e)}")
-    
+
     def handle_error(self, error_message: str):
         """处理错误"""
         self.update_status(error_message, True)
         print(f"错误: {error_message}")
-    
+
     def update_ppt_info(self):
         """更新PPT信息显示"""
         if self.controller.ppt_controller.is_active():
             # 更新幻灯片信息
             self.slide_count_label.setText(f"幻灯片总数: {self.controller.ppt_controller.get_status()['total_slides']}")
             self.current_page_label.setText(f"当前页码: {self.controller.ppt_controller.get_status()['current_slide']}")
-            
+
             # 更新预览按钮状态
             for i, btn in enumerate(self.slide_previews):
                 if i < len(self.slide_previews):
                     btn.setEnabled(True)
-                    btn.clicked.connect(lambda x, idx=i+1: self.jump_to_slide(idx))
-    
+                    btn.clicked.connect(lambda x, idx=i + 1: self.jump_to_slide(idx))
+
     def jump_to_slide(self, slide_number: int):
         """跳转到指定幻灯片"""
         try:
@@ -989,20 +1044,21 @@ class MainWindow(QMainWindow):
             self.update_status(f"已跳转到第 {slide_number} 页")
         except Exception as e:
             self.handle_error(f"跳转失败: {str(e)}")
-    
+
     def closeEvent(self, event):
         """窗口关闭事件处理"""
         try:
             # 停止所有控制器
             if self.controller.ppt_controller.is_active():
                 self.controller.exit_presentation()
-            if hasattr(self.controller, 'gesture_controller') and hasattr(self.controller.gesture_controller, 'running'):
+            if hasattr(self.controller, 'gesture_controller') and hasattr(self.controller.gesture_controller,
+                                                                          'running'):
                 self.controller.gesture_controller.running = False
             event.accept()
         except Exception as e:
             self.handle_error(f"关闭时发生错误: {str(e)}")
-            event.accept() 
-            
+            event.accept()
+
     def load_styles(self):
         self.setStyleSheet("""
             QMainWindow {
@@ -1156,7 +1212,7 @@ class MainWindow(QMainWindow):
             }
                            
         """)
-        
+
     def get_default_gesture_settings(self):
         """从后端配置获取默认手势设置"""
         try:
@@ -1164,14 +1220,14 @@ class MainWindow(QMainWindow):
             backend_to_frontend_action = {
                 "prev_slide": "上一页",
                 "next_slide": "下一页",
-                "fullscreen": "开始播放", 
+                "fullscreen": "开始播放",
                 "exit": "结束播放",
                 "pause": "暂停"
             }
             backend_to_frontend_gesture = {
                 "swipe_left": "向左滑动",
                 "swipe_right": "向右滑动",
-                "swipe_up": "向上滑动", 
+                "swipe_up": "向上滑动",
                 "swipe_down": "向下滑动",
                 "fist": "握拳",
                 "open_hand": "张开手掌",
@@ -1179,20 +1235,21 @@ class MainWindow(QMainWindow):
                 "point": "食指",
                 "dual_hand": "双手手势"
             }
-            
+
             default_settings = {}
-            
+
             # 如果有手势控制器，从配置中读取
-            if hasattr(self.controller, 'gesture_controller') and hasattr(self.controller.gesture_controller, 'gesture_configs'):
+            if hasattr(self.controller, 'gesture_controller') and hasattr(self.controller.gesture_controller,
+                                                                          'gesture_configs'):
                 configs = self.controller.gesture_controller.gesture_configs
-                
+
                 for backend_action, config in configs.items():
                     frontend_action = backend_to_frontend_action.get(backend_action)
                     if frontend_action:
                         if config.enabled:
                             if config.gesture_type.value == "dynamic" and config.motion_pattern:
                                 frontend_gesture = backend_to_frontend_gesture.get(config.motion_pattern, "自定义手势")
-                                default_settings[frontend_action] = frontend_gesture                    
+                                default_settings[frontend_action] = frontend_gesture
                             elif config.gesture_type.value == "static" and config.finger_pattern:
                                 # 根据手指模式确定手势
                                 if config.finger_pattern == [0, 0, 0, 0, 0]:
@@ -1211,36 +1268,35 @@ class MainWindow(QMainWindow):
                                 default_settings[frontend_action] = "无"
                         else:
                             default_settings[frontend_action] = "无"
-              # 确保所有前端动作都有默认值
+            # 确保所有前端动作都有默认值
             all_actions = ["上一页", "下一页", "开始播放", "结束播放", "暂停", "继续"]
             for action in all_actions:
                 if action not in default_settings:
                     default_settings[action] = "无"
-            
+
             # 根据实际的gesture_config.json，默认启用的是：
             # next_slide (下一页): swipe_right
             # prev_slide (上一页): swipe_left
             # exit (退出): dual_hand
             if not any(v != "无" for v in default_settings.values()):
                 default_settings = {
-                    "上一页": "向左滑动",      # prev_slide enabled=true
-                    "下一页": "向右滑动",      # next_slide enabled=true
-                    "开始播放": "无",          # fullscreen enabled=false
-                    "结束播放": "双手手势",     # exit enabled=true, dual_hand
-                    "暂停": "无",             # pause enabled=false                "继续": "无"             # 没有对应的后端配置
+                    "上一页": "向左滑动",  # prev_slide enabled=true
+                    "下一页": "向右滑动",  # next_slide enabled=true
+                    "开始播放": "无",  # fullscreen enabled=false
+                    "结束播放": "双手手势",  # exit enabled=true, dual_hand
+                    "暂停": "无",  # pause enabled=false                "继续": "无"             # 没有对应的后端配置
                 }
-                
+
             return default_settings
-            
+
         except Exception as e:
             print(f"获取默认手势设置失败: {e}")
             # 返回实际的默认配置：根据gesture_config.json
             return {
-                "上一页": "向左滑动",      # prev_slide enabled=true
-                "下一页": "向右滑动",      # next_slide enabled=true
-                "开始播放": "无",          # fullscreen enabled=false
-                "结束播放": "双手手势",     # exit enabled=true, dual_hand
-                "暂停": "无",             # pause enabled=false
-                "继续": "无"             # 没有对应的后端配置
+                "上一页": "向左滑动",  # prev_slide enabled=true
+                "下一页": "向右滑动",  # next_slide enabled=true
+                "开始播放": "无",  # fullscreen enabled=false
+                "结束播放": "双手手势",  # exit enabled=true, dual_hand
+                "暂停": "无",  # pause enabled=false
+                "继续": "无"  # 没有对应的后端配置
             }
-

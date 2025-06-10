@@ -5,6 +5,10 @@ import time
 import json
 import os
 from unified_ppt_gesture_controller import UnifiedPPTGestureController
+import RealTimeVoiceToText as RTVTT
+import threading
+import speech_text_manager
+
 
 class MainController(QObject):
     # 定义信号
@@ -21,6 +25,9 @@ class MainController(QObject):
     system_status_changed = Signal(str)
     error_occurred = Signal(str)
     status_changed = Signal(str)
+    # 添加语音识别信号
+    voice_recognition_started = Signal()
+    voice_recognition_stopped = Signal()
 
     def __init__(self):
         super().__init__()
@@ -33,7 +40,7 @@ class MainController(QObject):
         self.frame_count = 0
         self.last_fps_update = 0
         self.current_fps = 0
-        
+
         # 手势配置
         self.gesture_configs = {
             "next_slide": {"gesture_type": "swipe_right", "enabled": True},
@@ -41,9 +48,18 @@ class MainController(QObject):
             "play_pause": {"gesture_type": "palm_up", "enabled": True},
             "exit_presentation": {"gesture_type": "fist", "enabled": True}
         }
-        
+
         # 加载配置
         self.load_configs()
+
+        # 初始化语音识别器
+        self.audio_thread = None
+        self.voice_recognizer = RTVTT.get_RTVTT_recognizer()
+
+        # 初始化演讲稿管理器
+        self.speech_manager = speech_text_manager.SpeechTextManager()
+
+
 
     def start_system(self) -> bool:
         """启动系统"""
@@ -205,24 +221,24 @@ class MainController(QObject):
         try:
             # 更新帧计数
             self.frame_count += 1
-            
+
             # 更新FPS
             current_time = time.time()
             if current_time - self.last_fps_update >= 1.0:
                 self.update_fps(self.frame_count / (current_time - self.start_time))
                 self.frame_count = 0
                 self.last_fps_update = current_time
-            
+
             # 处理手势检测
             frame = self.gesture_detector.findHands(frame)
             lmList = self.gesture_detector.findPosition(frame)
-            
+
             if len(lmList) != 0:
                 # 检测手势并执行相应操作
                 self.process_gesture(lmList)
-            
+
             return frame
-            
+
         except Exception as e:
             self.error_occurred.emit(f"处理视频帧失败: {str(e)}")
             return frame
@@ -232,14 +248,14 @@ class MainController(QObject):
         try:
             # 获取手指状态
             fingers = self.gesture_detector.fingersUp(lmList)
-            
+
             # 根据手指状态判断手势
             if sum(fingers) == 5:  # 所有手指都张开
                 self.gesture_detected.emit("palm_up", 1.0)
             elif sum(fingers) == 0:  # 所有手指都闭合
                 self.gesture_detected.emit("fist", 1.0)
             # 可以添加更多手势判断逻辑
-            
+
         except Exception as e:
             self.error_occurred.emit(f"处理手势失败: {str(e)}")
 
@@ -253,7 +269,21 @@ class MainController(QObject):
             else:
                 self.gesture_detection_stopped.emit()
         except Exception as e:
-            self.error_occurred.emit(f"切换手势检测失败: {str(e)}")   
+            self.error_occurred.emit(f"切换手势检测失败: {str(e)}")
+
+    def toggle_voice_recognition(self, enabled: bool, next_page_keywords: list):
+        """切换语音识别状态"""
+        try:
+            # 使用后端的toggle_audio_stream函数改变RUNNING的值 控制语音识别的开启和关闭
+            RTVTT.toggle_audio_stream(enabled)
+            if enabled:
+                self.voice_recognizer.next_page_keywords = next_page_keywords
+                self.voice_recognition_started.emit()
+            else:
+                self.voice_recognition_stopped.emit()
+        except Exception as e:
+            self.error_occurred.emit(f"切换语音识别状态失败: {str(e)}")
+
     def update_gesture_mapping(self, gesture: str, action: str):
         """更新手势映射 - 已移至主窗口处理"""
         try:
@@ -282,4 +312,4 @@ class MainController(QObject):
 
     def is_presentation_active(self) -> bool:
         """检查演示是否处于活动状态"""
-        return self.ppt_controller.is_active() 
+        return self.ppt_controller.is_active()

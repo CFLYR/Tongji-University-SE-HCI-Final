@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout,
                              QPushButton, QLabel, QTextEdit, QCheckBox, QSpinBox,
                              QGroupBox, QFormLayout, QComboBox, QSlider, QMenu,
                              QDialog, QDialogButtonBox, QFrame, QScrollArea)
-from PySide6.QtCore import Qt, Signal, QTimer, QThread, pyqtSignal
+from PySide6.QtCore import Qt, Signal, QTimer, QThread
 from PySide6.QtGui import QIcon, QFont, QPixmap, QPainter, QColor
 import sys
 import os

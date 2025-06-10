@@ -6,59 +6,34 @@ import nls
 import sys
 import threading
 import json
+from ppt_controller import get_ppt_controller
+import re
 
 # 阿里云配置信息
 URL = "wss://nls-gateway-cn-shanghai.aliyuncs.com/ws/v1"
-TOKEN = "22657c1a025b4ebcb9c3806818471389"  # 实际Token，这是临时的免费的，可能需要每24小时换一个
-APPKEY = "eb0qKUAXtcStGTtw"  # 实际Appkey
+TOKEN = "d47f354604834d0e846aeff5d332a951"  # 实际Token，这是临时的免费的，可能需要每24小时换一个
+APPKEY = "Th4Q3N8Q2BRXGhNg"  # 实际Appkey
 
 # 记录音频数据的队列
 audio_queue = queue.Queue()
 
-# 创建锁对象确保输出不混乱
+# 控制语音识别的开启和关闭
+RUNNING: bool = False
+running_lock = threading.Lock()  # 用于保护RUNNING变量的锁
+page_lock = threading.Lock()  # 翻页锁
+
 output_lock = threading.Lock()
 
 
-# 打印可用音频设备
-def list_audio_devices():
-    """列出所有可用的音频设备并返回设备列表"""
-    print("\n可用音频设备列表:")
-    devices = sd.query_devices()
-    for i, dev in enumerate(devices):
-        print(f"{i}: {dev['name']} (输入通道: {dev['max_input_channels']}, 输出通道: {dev['max_output_channels']})")
-
-    return devices
-
-
-# 让用户选择设备
-def select_device(device_type):
-    """让用户选择设备并返回设备索引"""
-    devices = list_audio_devices()
-
-    while True:
-        try:
-            index = int(input(f"\n请输入{device_type}的设备索引: "))
-            if 0 <= index < len(devices):
-                # 验证设备是否有输入通道
-                if devices[index]['max_input_channels'] > 0:
-                    return index
-                else:
-                    print(f"设备 {index} 没有输入通道，请选择其他设备")
-            else:
-                print("索引超出范围，请重新输入")
-        except ValueError:
-            print("请输入有效的数字索引")
-
-
-# 从麦克风输入音频的回调函数
+# 从麦克风输入音频的回调函数 向音频队列中添加数据
 def audio_callback(indata, frames, time, status):
-    if status:
-        print(status, file=sys.stderr)
+    # if status:
+    #     print(status, file=sys.stderr)
     audio_queue.put(indata.copy())
 
 
 class RealTimeSpeechRecognizer:
-    def __init__(self, url, token, appkey):
+    def __init__(self, url=URL, token=TOKEN, appkey=APPKEY):
         self.url = url
         self.token = token
         self.appkey = appkey
@@ -66,6 +41,10 @@ class RealTimeSpeechRecognizer:
         self.current_text = ""  # 存储当前识别的文本
         self.last_complete_sentence = ""  # 存储最后完成的句子
         self.__initialize_transcriber()
+
+        # 换页关键词
+        self.next_page_keywords = []
+        self.prev_page_keyword = "上一页"
 
     def __initialize_transcriber(self):
         self.transcriber = nls.NlsSpeechTranscriber(
@@ -107,10 +86,43 @@ class RealTimeSpeechRecognizer:
             data = json.loads(message)
             result = data.get('payload', {}).get('result', '')
             self.current_text = result
-            with output_lock:
-                print(f"\n[开始] {result}")
+            # with output_lock:
+            #     print(f"\n[开始] {result}")
         except json.JSONDecodeError:
-            print(f"解析错误: {message}")
+            # print(f"解析错误: {message}")
+            pass
+
+    def detect_page_jump_command(self, text):
+        """
+        使用正则表达式检测跳转页面指令
+        支持中英文混合表达，如：
+          "跳转到第5页"
+          "go to page 10"
+          "翻到第3页"
+          "jump to page 15"
+        """
+        # 统一转换为小写（不区分大小写）
+        normalized_text = text.lower()
+        # 定义跳转页面的正则表达式模式
+        # 中文模式：匹配 "跳转[到/至]第X页" 或 "翻到第X页"
+        chinese_pattern = r'(?:跳转|翻|转到|切换)[到至]?第?(\d+)[页张]'
+        # 英文模式：匹配 "go to page X" 或 "jump to page X"
+        english_pattern = r'(?:go|jump|switch)\s*to\s*page\s*(\d+)'
+        # 组合中英文模式
+        combined_pattern = f"({chinese_pattern})|({english_pattern})"
+        # 在文本中搜索匹配
+        match = re.search(combined_pattern, normalized_text)
+        if match:
+            # 提取页码数字（优先取中文匹配，如果没有则取英文匹配）
+            page_num = match.group(1) or match.group(3)
+            if page_num:
+                try:
+                    page_num = int(page_num)
+                    # 执行跳转操作
+                    get_ppt_controller().jump_to_slide(page_num)
+                except ValueError:
+                    # print(f"提取的页码无效: {page_num}")
+                    pass
 
     def on_sentence_end(self, message, *args):
         # 解析JSON消息
@@ -118,15 +130,24 @@ class RealTimeSpeechRecognizer:
             data = json.loads(message)
             result = data.get('payload', {}).get('result', '')
             self.current_text = ""
-            self.last_complete_sentence = result
+            self.last_complete_sentence = result  # 一句完整的不中断的话
+            # 当一段连续不中断的话结束 阿里云的sdk会自动调用该函数 在这里调用PPT换页的逻辑
+            with page_lock:
+                next_page_keyword = [kw for kw in self.next_page_keywords if kw in result]
+                if next_page_keyword:
+                    get_ppt_controller().next_slide()
+                elif self.prev_page_keyword in result:
+                    get_ppt_controller().previous_slide()
+                # else:
+                #     self.detect_page_jump_command(result)
             with output_lock:
                 print(f"\n[完整句子] {result}")
         except json.JSONDecodeError:
-            print(f"解析错误: {message}")
+            # print(f"解析错误: {message}")
+            pass
 
     def on_start(self, message, *args):
-        with output_lock:
-            print(f"识别开始: {message}")
+        pass
 
     def on_result_changed(self, message, *args):
         # 解析JSON消息 - 这是实时更新的文本
@@ -134,23 +155,17 @@ class RealTimeSpeechRecognizer:
             data = json.loads(message)
             result = data.get('payload', {}).get('result', '')
             self.current_text = result
-            # 使用回车符覆盖上一行实现实时更新效果
-            with output_lock:
-                print(f"\r实时识别: {result}", end="", flush=True)
         except json.JSONDecodeError:
-            print(f"解析错误: {message}")
+            pass
 
     def on_completed(self, message, *args):
-        with output_lock:
-            print(f"\n识别完成: {message}")
+        pass
 
     def on_error(self, message, *args):
-        with output_lock:
-            print(f"\n错误: {message}")
+        pass
 
     def on_close(self, *args):
-        with output_lock:
-            print(f"\n连接关闭: {args}")
+        pass
 
 
 # 调用阿里云的语音转文字的接口
@@ -159,29 +174,34 @@ def recognize_speech(audio_data, recognizer):
     recognizer.send_audio(audio_data.tobytes())
 
 
-# 实时显示识别结果的线程函数
-def display_results(recognizer):
-    """实时显示识别结果的线程"""
-    try:
-        while True:
-            # 获取当前识别文本
-            current_text = recognizer.get_current_text()
+# 开启音频流并处理音频数据
+def start_audio_stream(recognizer, mic_device_index=1):
+    global RUNNING
+    with running_lock:
+        RUNNING = True  # 设置全局变量RUNNING为True，开启语音识别
+        print("语音识别已开启")
 
-            # 使用锁确保输出不混乱
-            with output_lock:
-                # 清空当前行
-                print("\r" + " " * 100, end="", flush=True)
-                # 显示实时结果
-                if current_text:
-                    print(f"\r{current_text}", end="", flush=True)
+    def audio_processing():
+        nonlocal recognizer
+        mic_audio_buffer = []
+
+        while True:
+            with running_lock:
+                if not RUNNING:
+                    print("语音识别已关闭")
+                    break
+
+            while not audio_queue.empty():
+                mic_audio_buffer.append(audio_queue.get())
+
+            if len(mic_audio_buffer) >= 10:
+                threading.Thread(target=recognize_speech, args=(mic_audio_buffer.copy(), recognizer)).start()
+                mic_audio_buffer = []  # 清空缓冲区
 
             time.sleep(0.1)
-    except KeyboardInterrupt:
-        pass
 
+        recognizer.stop_transcription()
 
-# 开启音频流并处理音频数据
-def start_audio_stream(mic_device_index, recognizer):
     # 创建麦克风输入流
     mic_stream = sd.InputStream(
         callback=audio_callback,
@@ -192,51 +212,30 @@ def start_audio_stream(mic_device_index, recognizer):
     )
 
     with mic_stream:
-        print("\n录音中... 按 Ctrl+C 停止")
-        print(f"麦克风设备: {sd.query_devices(mic_device_index)['name']}")
+        audio_processing()
 
-        # 启动结果显示线程
-        display_thread = threading.Thread(target=display_results, args=(recognizer,))
-        display_thread.daemon = True
-        display_thread.start()
 
-        mic_audio_buffer = []
+def toggle_audio_stream(enabled: bool):
+    global RUNNING
+    with running_lock:
+        RUNNING = enabled
 
-        try:
-            while True:
-                # 收集麦克风音频数据
-                while not audio_queue.empty():
-                    mic_audio_buffer.append(audio_queue.get())
 
-                # 当收集到足够数据时发送识别请求
-                if len(mic_audio_buffer) >= 10:
-                    threading.Thread(target=recognize_speech, args=(mic_audio_buffer.copy(), recognizer)).start()
-                    mic_audio_buffer = []  # 清空缓冲区
+_RTVTT_recognizer = None
 
-                time.sleep(0.1)
-        except KeyboardInterrupt:
-            print("\n停止录音...")
-            recognizer.stop_transcription()
-            print("转录服务已停止")
+
+def get_RTVTT_recognizer() -> RealTimeSpeechRecognizer():
+    global _RTVTT_recognizer
+    if _RTVTT_recognizer is None:
+        _RTVTT_recognizer = RealTimeSpeechRecognizer()
+    return _RTVTT_recognizer
 
 
 if __name__ == "__main__":
-    # 解除以下注释选择音频输入设备
-    # print("=" * 50)
-    # print("麦克风实时语音转文字程序")
-    # print("=" * 50)
-    # print("说明:")
-    # print("- 实时识别文本会在同一行更新")
-    # print("- 完整的句子会以[完整句子]标记在新行显示")
-    # print("=" * 50)
-    # # 让用户选择麦克风设备
-    # print("\n请选择麦克风设备:")
-    # mic_device_index = select_device("麦克风")
-
     # 默认麦克风
     mic_device_index = 1
 
     # 初始化语音识别器
     recognizer = RealTimeSpeechRecognizer(URL, TOKEN, APPKEY)
-    # 启动音频流
-    start_audio_stream(mic_device_index, recognizer)
+    # 开启音频流并处理音频数据
+    start_audio_stream(recognizer, mic_device_index)
