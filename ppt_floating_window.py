@@ -448,6 +448,9 @@ class PPTFloatingWindow(QWidget):
         # 拖拽相关
         self._drag_active = False
         self._drag_pos = None
+        self._drag_start_pos = None
+        self._button_drag_start = False  # 添加按钮拖拽状态属性
+        
         # 最小化状态
         self._is_minimized = False
         self._normal_size = (340, 260)
@@ -480,9 +483,11 @@ class PPTFloatingWindow(QWidget):
         """)
         
         # 录制状态显示
-        self.recording_status = RecordingStatusWidget()        # 最小化按钮（原关闭按钮）
+        self.recording_status = RecordingStatusWidget()
+        
+        # 最小化按钮
         self.minimize_btn = QPushButton("—")
-        self.minimize_btn.setFixedSize(24, 24)  # 增大按钮尺寸
+        self.minimize_btn.setFixedSize(24, 24)
         self.minimize_btn.setStyleSheet("""
             QPushButton {
                 background: #E0E0E0;
@@ -503,10 +508,34 @@ class PPTFloatingWindow(QWidget):
         """)
         self.minimize_btn.clicked.connect(self.toggle_minimize)
         
+        # 关闭按钮
+        self.close_btn = QPushButton("×")
+        self.close_btn.setFixedSize(24, 24)
+        self.close_btn.setStyleSheet("""
+            QPushButton {
+                background: #E0E0E0;
+                color: #333;
+                font-size: 16px;
+                font-weight: bold;
+                border: 1px solid #CCCCCC;
+                border-radius: 12px;
+            }
+            QPushButton:hover {
+                background: #FF4444;
+                color: white;
+                border: 1px solid #FF4444;
+            }
+            QPushButton:pressed {
+                background: #CC0000;
+            }
+        """)
+        self.close_btn.clicked.connect(self.close)
+        
         title_layout.addWidget(title_label)
         title_layout.addWidget(self.recording_status)
         title_layout.addStretch()
         title_layout.addWidget(self.minimize_btn)
+        title_layout.addWidget(self.close_btn)
         main_layout.addLayout(title_layout)
         
         # PPT控制按钮区
@@ -515,31 +544,53 @@ class PPTFloatingWindow(QWidget):
         self.btn_start = QPushButton("开始")
         self.btn_prev = QPushButton("上一页")
         self.btn_next = QPushButton("下一页")
+        self.btn_exit = QPushButton("退出")
+        self.btn_exit.setStyleSheet("""
+            QPushButton {
+                background: #FF4D4F;
+                color: white;
+                border-radius: 5px;
+                font-weight: bold;
+                padding: 0 8px;
+                border: none;
+                font-size: 11px;
+            }
+            QPushButton:hover {
+                background: #FF7875;
+            }
+            QPushButton:pressed {
+                background: #D9363E;
+            }
+        """)
+        self.btn_exit.setFixedHeight(28)
+        self.btn_exit.clicked.connect(self.exit_presentation)
         
-        for btn in [self.btn_start, self.btn_prev, self.btn_next]:
+        for btn in [self.btn_start, self.btn_prev, self.btn_next, self.btn_exit]:
             btn.setFixedHeight(28)
-            btn.setStyleSheet("""
-                QPushButton {
-                    background: #165DFF;
-                    color: white;
-                    border-radius: 5px;
-                    font-weight: bold;
-                    padding: 0 8px;
-                    border: none;
-                    font-size: 11px;
-                }
-                QPushButton:hover {
-                    background: #466BB0;
-                }
-                QPushButton:pressed {
-                    background: #0F4FDD;
-                }
-            """)
+            if btn not in [self.btn_exit]:
+                btn.setStyleSheet("""
+                    QPushButton {
+                        background: #165DFF;
+                        color: white;
+                        border-radius: 5px;
+                        font-weight: bold;
+                        padding: 0 8px;
+                        border: none;
+                        font-size: 11px;
+                    }
+                    QPushButton:hover {
+                        background: #466BB0;
+                    }
+                    QPushButton:pressed {
+                        background: #0F4FDD;
+                    }
+                """)
         ppt_layout.addWidget(self.btn_start)
         ppt_layout.addWidget(self.btn_prev)
         ppt_layout.addWidget(self.btn_next)
+        ppt_layout.addWidget(self.btn_exit)
         main_layout.addLayout(ppt_layout)
-          # 连接PPT控制按钮事件
+        # 连接PPT控制按钮事件
         self.btn_start.clicked.connect(self.toggle_gesture_control)
         # 连接上一页和下一页按钮
         self.btn_prev.clicked.connect(self.previous_slide)
@@ -1016,6 +1067,7 @@ class PPTFloatingWindow(QWidget):
     
     def toggle_minimize(self):
         """切换最小化状态"""
+        print("进入toggle_minimize")
         if self._is_minimized:
             self.restore_window()
         else:
@@ -1023,6 +1075,12 @@ class PPTFloatingWindow(QWidget):
     
     def minimize_window(self):
         """最小化窗口"""
+        # 重置所有拖拽相关状态
+        self._drag_active = False
+        self._button_drag_start = False
+        self._drag_pos = None
+        self._drag_start_pos = None
+        
         self._is_minimized = True
         
         # 保存当前尺寸
@@ -1035,7 +1093,8 @@ class PPTFloatingWindow(QWidget):
         for child in self.findChildren(QWidget):
             if child != self.minimize_btn:
                 child.hide()
-          # 更改最小化按钮的样式和文本，使其成为恢复按钮
+        
+        # 更改最小化按钮的样式和文本，使其成为恢复按钮
         self.minimize_btn.setText("展开")
         self.minimize_btn.setFixedSize(70, 30)  # 调整为更合适的小按钮大小
         self.minimize_btn.setStyleSheet("""
@@ -1054,33 +1113,48 @@ class PPTFloatingWindow(QWidget):
                 background: #388E3C;
             }
         """)
-          # 创建一个简单的布局来显示小按钮
-        if hasattr(self, 'minimized_layout'):
-            # 清理之前的布局
-            while self.minimized_layout.count():
-                self.minimized_layout.takeAt(0)
-        else:
-            self.minimized_layout = QVBoxLayout()
-            
-        self.minimized_layout.addWidget(self.minimize_btn)
-        self.minimized_layout.setContentsMargins(5, 5, 5, 5)  # 增加边距确保按钮完全显示
-        self.minimized_layout.setAlignment(Qt.AlignCenter)  # 居中对齐
         
-        # 设置新的布局
+        # 创建新的布局
+        new_layout = QVBoxLayout()
+        new_layout.addWidget(self.minimize_btn)
+        new_layout.setContentsMargins(5, 5, 5, 5)  # 增加边距确保按钮完全显示
+        new_layout.setAlignment(Qt.AlignCenter)  # 居中对齐
+        
+        # 清理并设置新布局
         if self.layout():
-            # 清理当前布局
             QWidget().setLayout(self.layout())
-        self.setLayout(self.minimized_layout)
+        self.setLayout(new_layout)
+        self.minimized_layout = new_layout  # 保存新布局的引用
+        
+        # 重新连接按钮的点击事件
+        try:
+            self.minimize_btn.clicked.disconnect()
+        except:
+            pass
+        self.minimize_btn.clicked.connect(self.toggle_minimize)
+        
+        # 重新设置按钮的事件处理器
+        self.minimize_btn.mousePressEvent = self.button_mouse_press_event
+        self.minimize_btn.mouseMoveEvent = self.button_mouse_move_event
+        self.minimize_btn.mouseReleaseEvent = self.button_mouse_release_event
         
         print("📦 悬浮窗已最小化")
-    
+        
     def restore_window(self):
         """恢复窗口"""
+        print("进入restore_window")
+        # 重置所有拖拽相关状态
+        self._drag_active = False
+        self._button_drag_start = False
+        self._drag_pos = None
+        self._drag_start_pos = None
+        
         self._is_minimized = False
         
         # 恢复原始尺寸
         self.setFixedSize(*self._normal_size)
-          # 恢复最小化按钮的原始样式
+        
+        # 恢复最小化按钮的原始样式
         self.minimize_btn.setText("—")
         self.minimize_btn.setFixedSize(24, 24)
         self.minimize_btn.setStyleSheet("""
@@ -1102,15 +1176,33 @@ class PPTFloatingWindow(QWidget):
             }
         """)
         
-        # 重新初始化UI
+        # 重新连接按钮的点击事件
+        try:
+            self.minimize_btn.clicked.disconnect()
+        except:
+            pass
+        self.minimize_btn.clicked.connect(self.toggle_minimize)
+        
+        # 恢复按钮的默认事件处理器
+        self.minimize_btn.mousePressEvent = lambda e: QPushButton.mousePressEvent(self.minimize_btn, e)
+        self.minimize_btn.mouseMoveEvent = lambda e: QPushButton.mouseMoveEvent(self.minimize_btn, e)
+        self.minimize_btn.mouseReleaseEvent = lambda e: QPushButton.mouseReleaseEvent(self.minimize_btn, e)
+        
+        # 清理当前布局
         if self.layout():
             QWidget().setLayout(self.layout())
         
+        # 重新初始化UI
         self.init_ui()
         
-        # 显示所有子控件
+        # 确保所有子控件都显示
         for child in self.findChildren(QWidget):
             child.show()
+            child.setVisible(True)
+        
+        # 强制更新布局
+        self.updateGeometry()
+        self.update()
         
         print("📂 悬浮窗已恢复")
     
@@ -1125,10 +1217,12 @@ class PPTFloatingWindow(QWidget):
         """按钮的鼠标按下事件"""
         if event.button() == Qt.LeftButton:
             if self._is_minimized:
-                # 在最小化状态下，记录拖拽信息
-                self._drag_active = True
-                self._drag_pos = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+                # 在最小化状态下，记录拖拽起始位置
+                self._drag_active = False  # 初始状态为未拖动
                 self._button_drag_start = True
+                # 使用全局位置来计算偏移
+                self._drag_start_pos = event.globalPosition().toPoint()
+                self._drag_pos = self._drag_start_pos - self.frameGeometry().topLeft()
                 event.accept()
             else:
                 # 正常状态下，按钮不处理拖拽
@@ -1136,24 +1230,49 @@ class PPTFloatingWindow(QWidget):
     
     def button_mouse_move_event(self, event):
         """按钮的鼠标移动事件"""
-        if self._is_minimized and self._drag_active and event.buttons() & Qt.LeftButton:
-            # 在最小化状态下移动窗口
-            self.move(event.globalPosition().toPoint() - self._drag_pos)
+        if self._is_minimized and self._button_drag_start and event.buttons() & Qt.LeftButton:
+            current_pos = event.globalPosition().toPoint()
+            move_distance = (current_pos - self._drag_start_pos).manhattanLength()
+            
+            # 如果移动距离超过阈值（10像素），则启用拖动
+            if move_distance > 10:
+                self._drag_active = True
+                # 使用保存的偏移量来移动窗口
+                new_pos = current_pos - self._drag_pos
+                self.move(new_pos)
             event.accept()
         else:
             QPushButton.mouseMoveEvent(self.minimize_btn, event)
     
     def button_mouse_release_event(self, event):
         """按钮的鼠标释放事件"""
-        if self._is_minimized and hasattr(self, '_button_drag_start') and self._button_drag_start:
-            # 如果是拖拽结束，不触发按钮点击
-            self._drag_active = False
-            self._button_drag_start = False
-            event.accept()
+        if self._is_minimized and event.button() == Qt.LeftButton:
+            if self._drag_active:
+                # 拖动结束，不触发点击
+                self._drag_active = False
+                self._button_drag_start = False
+                event.accept()
+            else:
+                # 未拖动，触发按钮点击
+                self._button_drag_start = False
+                self.minimize_btn.click()  # 直接模拟点击
+                event.accept()
         else:
-            # 正常的按钮点击
-            self._drag_active = False
             QPushButton.mouseReleaseEvent(self.minimize_btn, event)
+
+    def exit_presentation(self):
+        """退出PPT全屏播放"""
+        try:
+            self._activate_ppt_window()
+            import pyautogui as pt
+            pt.FAILSAFE = False
+            pt.PAUSE = 0.1
+            pt.press('esc')
+            print("✅ 已发送ESC键退出全屏播放")
+        except Exception as e:
+            print(f"❌ 退出全屏播放失败: {e}")
+            import traceback
+            traceback.print_exc()
 
 class DraggableMinimizedWidget(QWidget):
     """可拖拽的最小化控件"""
