@@ -524,33 +524,33 @@ class PPTFloatingWindow(QWidget):
         self.minimize_btn.clicked.connect(self.toggle_minimize)
         
         # 关闭按钮
-        self.close_btn = QPushButton("×")
-        self.close_btn.setFixedSize(24, 24)
-        self.close_btn.setStyleSheet("""
-            QPushButton {
-                background: #E0E0E0;
-                color: #333;
-                font-size: 16px;
-                font-weight: bold;
-                border: 1px solid #CCCCCC;
-                border-radius: 12px;
-            }
-            QPushButton:hover {
-                background: #FF4444;
-                color: white;
-                border: 1px solid #FF4444;
-            }
-            QPushButton:pressed {
-                background: #CC0000;
-            }
-        """)
-        self.close_btn.clicked.connect(self.close)
+        # self.close_btn = QPushButton("×")
+        # self.close_btn.setFixedSize(24, 24)
+        # self.close_btn.setStyleSheet("""
+        #     QPushButton {
+        #         background: #E0E0E0;
+        #         color: #333;
+        #         font-size: 16px;
+        #         font-weight: bold;
+        #         border: 1px solid #CCCCCC;
+        #         border-radius: 12px;
+        #     }
+        #     QPushButton:hover {
+        #         background: #FF4444;
+        #         color: white;
+        #         border: 1px solid #FF4444;
+        #     }
+        #     QPushButton:pressed {
+        #         background: #CC0000;
+        #     }
+        # """)
+        # self.close_btn.clicked.connect(self.close)
 
         title_layout.addWidget(title_label)
         title_layout.addWidget(self.recording_status)
         title_layout.addStretch()
         title_layout.addWidget(self.minimize_btn)
-        title_layout.addWidget(self.close_btn)
+        #title_layout.addWidget(self.close_btn)
         main_layout.addLayout(title_layout)        # PPT控制按钮区
         ppt_layout = QHBoxLayout()
         
@@ -866,19 +866,28 @@ class PPTFloatingWindow(QWidget):
                     background: #466BB0;
                 }                QPushButton:pressed {
                     background: #0F4FDD;
-                }            """)
-
+                }            """)  
+            
     def start_voice_recognition(self):
         """启动语音识别"""
         print("🎤 DEBUG: start_voice_recognition 被调用")
+        
+        # 检查语音识别功能是否被主窗口启用
+        if not getattr(self, 'voice_recognition_enabled', False):
+            print("❌ 语音识别功能未在主窗口启用")
+            return
+        
         try:
             if not self.main_controller:
                 print("❌ 主控制器未设置")
                 return
             
-            # 通过主控制器启动语音识别，确保字幕功能正常
-            print("🔧 通过主控制器启动语音识别...")
-            self.main_controller.toggle_voice_recognition(True, [])
+            # 使用传递过来的关键词启动语音识别
+            keywords = getattr(self, 'voice_keywords', ["下一页"])
+            print(f"🔧 使用关键词启动语音识别: {keywords}")
+            
+            # 通过主控制器启动语音识别，传递关键词
+            self.main_controller.toggle_voice_recognition(True, keywords)
             
             # 启动语音字幕更新定时器
             if hasattr(self, 'voice_subtitle_timer'):
@@ -1114,9 +1123,16 @@ class PPTFloatingWindow(QWidget):
             # 详细调试信息输出
             if current_text and current_text.strip():
                 print(f"🎤 实时识别中: {current_text}")
-            
+                
             if last_complete_sentence and last_complete_sentence.strip():
                 print(f"✅ 完整句子: {last_complete_sentence}")
+                
+                # 通知主窗口进行文稿匹配（如果有主窗口引用）
+                if hasattr(self.main_controller, 'main_window'):
+                    try:
+                        self.main_controller.main_window.process_complete_sentence(last_complete_sentence)
+                    except Exception as e:
+                        print(f"⚠️ 文稿匹配处理失败: {e}")
             
             # 优先显示当前正在识别的文本，如果没有则显示最后完成的句子
             display_text = ""
@@ -1628,6 +1644,28 @@ class PPTFloatingWindow(QWidget):
                 self.subtitle_display.clear_subtitles()
                 print("🧹 字幕显示已清空")
             print("❌ 字幕显示已禁用")
+
+    def set_voice_recognition_enabled(self, enabled: bool):
+        """设置语音识别功能可用状态"""
+        self.voice_recognition_enabled = enabled
+        print(f"🔧 悬浮窗语音识别功能状态设置为: {'启用' if enabled else '禁用'}")
+        
+        # 如果禁用了语音识别功能，停止当前的语音识别
+        if not enabled:
+            self.stop_voice_recognition()
+    
+    def set_voice_keywords(self, keywords: list):
+        """设置语音识别关键词"""
+        self.voice_keywords = keywords
+        print(f"🔧 悬浮窗接收到语音关键词: {keywords}")
+    
+    def get_voice_recognition_status(self):
+        """获取语音识别状态"""
+        return {
+            'enabled': getattr(self, 'voice_recognition_enabled', False),
+            'keywords': getattr(self, 'voice_keywords', []),
+            'running': RTVTT.is_voice_recognition_running() if RTVTT else False
+        }
 
     def end_presentation(self):
         """结束演示 - 完整的演示结束流程"""

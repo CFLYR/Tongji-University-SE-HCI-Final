@@ -21,15 +21,18 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("大学生Presentation助手")
         self.setWindowFlags(Qt.FramelessWindowHint)
-        self.setMinimumSize(1200, 800)
-
-        # 初始化主控制器
+        self.setMinimumSize(1200, 800)        # 初始化主控制器
         self.controller = MainController()
+        self.controller.set_main_window(self)  # 设置主窗口引用
           # 初始化语音关键词列表
         self.voice_keywords = ["下一页"]
-        
-        # 初始化文稿管理器
+          # 初始化文稿管理器
         self.script_manager = ScriptManager()
+        
+        # 文稿跟随状态
+        self.script_follow_enabled = False
+        self.current_script_position = 0  # 当前演讲到的位置（行号，从0开始）
+        self.imported_script_lines = []  # 导入的文稿行列表
 
         # 创建主窗口部件
         main_widget = QWidget()
@@ -206,12 +209,19 @@ class MainWindow(QMainWindow):
                     
                     # 如果有演讲稿管理器，设置到悬浮窗
                     if hasattr(self.controller, 'speech_manager'):
-                        self.floating_window.set_speech_manager(self.controller.speech_manager)
-
-                    # 同步当前字幕显示状态到悬浮窗
+                        self.floating_window.set_speech_manager(self.controller.speech_manager)                    # 同步当前字幕显示状态到悬浮窗
                     if hasattr(self, 'subtitle_checkbox') and self.subtitle_checkbox.isChecked():
                         print("🔄 同步字幕显示状态到悬浮窗")
                         self.floating_window.set_subtitle_display_enabled(True)
+                    
+                    # 同步语音识别功能状态和关键词到悬浮窗
+                    if hasattr(self, 'voice_checkbox') and self.voice_checkbox.isChecked():
+                        print("🔄 同步语音识别功能状态到悬浮窗")
+                        if hasattr(self.floating_window, 'set_voice_recognition_enabled'):
+                            self.floating_window.set_voice_recognition_enabled(True)
+                        if hasattr(self.floating_window, 'set_voice_keywords'):
+                            self.floating_window.set_voice_keywords(self.voice_keywords)
+                            print(f"📝 已将关键词同步到悬浮窗: {self.voice_keywords}")
 
                 self.floating_window.show()
         else:
@@ -242,25 +252,45 @@ class MainWindow(QMainWindow):
         self.controller.toggle_gesture_detection(enabled)
         status = "开启" if enabled else "关闭"
         self.update_status(f"手势检测已{status}")
-
+        
     def toggle_voice_recognition(self, enabled: bool):
-        """切换语音识别状态"""
-        # 直接使用已保存的关键词，不再弹出设置对话框
-        if enabled:
-            # 启动语音识别，使用当前保存的关键词
-            self.controller.toggle_voice_recognition(True, self.voice_keywords)
-        else:
-            # 停止语音识别
-            self.controller.toggle_voice_recognition(False, [])
-
+        """切换语音识别功能可用状态（不直接启动语音识别）"""
+        print(f"🎙️ 设置语音识别功能可用状态: {enabled}")
+        
         # 更新状态显示
-        self.update_status(f"语音识别已{'开启' if enabled else '关闭'}")        # 控制字幕复选框的可用性
+        self.update_status(f"语音识别功能已{'启用' if enabled else '禁用'}")
+        
+        # 控制字幕复选框和文稿跟随复选框的可用性
         self.subtitle_checkbox.setEnabled(enabled)
+        self.script_follow_checkbox.setEnabled(enabled)
+        
         if not enabled:
-            # 禁用语音识别时，也禁用字幕显示
+            # 禁用语音识别功能时，也禁用字幕显示和文稿跟随
             self.subtitle_checkbox.blockSignals(True)
             self.subtitle_checkbox.setChecked(False)
             self.subtitle_checkbox.blockSignals(False)
+            
+            self.script_follow_checkbox.blockSignals(True)
+            self.script_follow_checkbox.setChecked(False)
+            self.script_follow_checkbox.blockSignals(False)
+            
+            # 如果悬浮窗存在，停止语音识别并禁用功能
+            if hasattr(self, 'floating_window') and self.floating_window:
+                if hasattr(self.floating_window, 'stop_voice_recognition'):
+                    self.floating_window.stop_voice_recognition()
+                if hasattr(self.floating_window, 'set_voice_recognition_enabled'):
+                    self.floating_window.set_voice_recognition_enabled(False)
+        else:
+            # 启用语音识别功能时，传递状态和关键词到悬浮窗
+            if hasattr(self, 'floating_window') and self.floating_window:
+                # 设置语音识别功能可用状态
+                if hasattr(self.floating_window, 'set_voice_recognition_enabled'):
+                    self.floating_window.set_voice_recognition_enabled(True)
+                
+                # 传递关键词到悬浮窗
+                if hasattr(self.floating_window, 'set_voice_keywords'):
+                    self.floating_window.set_voice_keywords(self.voice_keywords)
+                    print(f"📝 已将关键词传递到悬浮窗: {self.voice_keywords}")
 
     def show_keyword_settings(self):
         """显示关键词设置对话框"""
@@ -272,7 +302,7 @@ class MainWindow(QMainWindow):
             print(f"📝 语音关键词已更新: {keywords}")
         
         dialog.keywords_changed.connect(on_keywords_updated)
-        dialog.exec() 
+        dialog.exec()
         
     def update_detection_interval(self, interval: int):
         """更新检测间隔"""
@@ -285,12 +315,33 @@ class MainWindow(QMainWindow):
         
         def on_keywords_updated(keywords):
             self.voice_keywords = keywords
-            self.update_status(f"关键词已更新，共 {len(keywords)} 个")
-            print(f"📝 语音关键词已更新: {keywords}")
+            
+            # 尝试加载已导入的文稿到文稿管理器
+            success = self.script_manager.load_imported_script()
+            if success:
+                # 更新文稿跟随相关变量
+                self.imported_script_lines = self.script_manager.get_lines()
+                if self.script_follow_enabled:
+                    self.current_script_position = 0  # 重置位置
+                    self.update_script_display()
+                
+                # 如果悬浮窗存在，更新悬浮窗中的文稿显示
+                if hasattr(self, 'floating_window') and self.floating_window:
+                    # 获取文稿的第一行作为预览
+                    first_line = self.script_manager.get_line_by_number(1)
+                    if first_line:
+                        self.floating_window.set_script_text(f"📄 文稿已导入\n{first_line[:50]}...")
+                    else:
+                        self.floating_window.set_script_text("📄 文稿已导入，可以开始演示")
+                    
+                    print("✅ 文稿已同步到悬浮窗")
+            
+            self.update_status(f"文稿导入完成，关键词已更新，共 {len(keywords)} 个")
+            print(f"📄 从文稿导入的关键词已更新: {keywords}")
         
-        dialog.keywords_changed.connect(on_keywords_updated)
+        dialog.keywords_updated.connect(on_keywords_updated)
         dialog.exec()
-    
+        
     def show_script_import_dialog(self):
         """显示文稿导入对话框"""
         dialog = ScriptImportDialog(self, self.voice_keywords)
@@ -317,6 +368,7 @@ class MainWindow(QMainWindow):
         
         dialog.keywords_updated.connect(on_keywords_updated)
         dialog.exec()
+
 
     def update_gesture_mapping(self, action: str, gesture: str):
         """更新手势映射"""
@@ -1069,13 +1121,20 @@ class MainWindow(QMainWindow):
         keyword_layout.addWidget(self.script_import_btn)
         keyword_layout.addStretch()
         voice_layout.addLayout(keyword_layout)
-        
-        # 字幕显示按钮
+          # 字幕显示按钮
         self.subtitle_checkbox = QCheckBox("显示AI字幕")
         self.subtitle_checkbox.setStyleSheet("QCheckBox {}")
         self.subtitle_checkbox.setEnabled(False)  # 默认禁用，需要先启用语音识别
         
         voice_layout.addWidget(self.subtitle_checkbox, alignment=Qt.AlignLeft)
+        
+        # 文稿跟随复选框
+        self.script_follow_checkbox = QCheckBox("启用文稿跟随")
+        self.script_follow_checkbox.setStyleSheet("QCheckBox {}")
+        self.script_follow_checkbox.setEnabled(False)  # 默认禁用，需要先启用语音识别
+        self.script_follow_checkbox.toggled.connect(self.toggle_script_follow)
+        
+        voice_layout.addWidget(self.script_follow_checkbox, alignment=Qt.AlignLeft)
         layout.addWidget(voice_group)
 
         # 添加弹性空间
@@ -1430,3 +1489,180 @@ class MainWindow(QMainWindow):
         status_text = "字幕显示已开启" if enabled else "字幕显示已关闭"
         self.update_status(status_text)
         print(f"✅ DEBUG: 字幕显示状态更新完成: {status_text}")
+
+    def toggle_script_follow(self, enabled: bool):
+        """切换文稿跟随状态"""
+        print(f"🔧 DEBUG: toggle_script_follow 被调用, enabled={enabled}")
+        print(f"🔧 DEBUG: 语音识别状态: {self.voice_checkbox.isChecked()}")
+        
+        if enabled and not self.voice_checkbox.isChecked():
+            # 如果语音识别未开启，不允许开启文稿跟随
+            self.script_follow_checkbox.blockSignals(True)
+            self.script_follow_checkbox.setChecked(False)
+            self.script_follow_checkbox.blockSignals(False)
+            self.update_status("请先启用语音识别才能使用文稿跟随", is_error=True)
+            print("❌ DEBUG: 语音识别未开启，拒绝启用文稿跟随")
+            return
+        
+        self.script_follow_enabled = enabled
+        
+        if enabled:
+            # 加载导入的文稿
+            if self.script_manager.load_imported_script():
+                self.imported_script_lines = self.script_manager.get_lines()
+                self.current_script_position = 0  # 重置到开始位置
+                self.update_script_display()
+                self.update_status("文稿跟随已启用，将根据语音识别结果跟随文稿进度")
+                print(f"✅ 文稿跟随已启用，共 {len(self.imported_script_lines)} 行文稿")
+            else:
+                # 如果没有导入文稿，禁用文稿跟随
+                self.script_follow_checkbox.blockSignals(True)
+                self.script_follow_checkbox.setChecked(False)
+                self.script_follow_checkbox.blockSignals(False)
+                self.script_follow_enabled = False
+                self.update_status("请先导入演讲文稿才能使用文稿跟随功能", is_error=True)
+                print("❌ 没有导入文稿，无法启用文稿跟随")
+        else:
+            self.update_status("文稿跟随已关闭")
+            print("❌ 文稿跟随已关闭")
+
+    def match_speech_to_script(self, recognized_text: str):
+        """将识别的语音与文稿进行匹配"""
+        if not self.script_follow_enabled or not self.imported_script_lines:
+            return False, -1, 0.0
+        
+        # 清理识别文本
+        cleaned_text = recognized_text.strip()
+        if len(cleaned_text) < 3:  # 太短的文本不进行匹配
+            return False, -1, 0.0
+        
+        print(f"🔍 正在匹配语音文本: '{cleaned_text}'")
+        
+        # 从当前位置开始向后搜索匹配
+        max_confidence = 0.0
+        best_match_position = -1
+        
+        # 搜索范围：当前位置往后的5行内
+        search_start = self.current_script_position
+        search_end = min(len(self.imported_script_lines), self.current_script_position + 5)
+        
+        for i in range(search_start, search_end):
+            script_line = self.imported_script_lines[i]
+            confidence = self.calculate_text_similarity(cleaned_text, script_line)
+            
+            print(f"📝 第{i+1}行: '{script_line[:30]}...' -> 置信度: {confidence:.3f}")
+            
+            if confidence > max_confidence:
+                max_confidence = confidence
+                best_match_position = i
+        
+        # 如果找不到好的匹配，尝试在整个文稿中搜索
+        if max_confidence < 0.3:
+            print("🔄 在当前位置附近未找到匹配，扩大搜索范围...")
+            for i in range(len(self.imported_script_lines)):
+                if i >= search_start and i < search_end:
+                    continue  # 跳过已经搜索过的
+                
+                script_line = self.imported_script_lines[i]
+                confidence = self.calculate_text_similarity(cleaned_text, script_line)
+                
+                if confidence > max_confidence:
+                    max_confidence = confidence
+                    best_match_position = i
+        
+        # 判断是否匹配成功（置信度阈值设为0.4）
+        match_threshold = 0.4
+        is_match = max_confidence >= match_threshold
+        
+        if is_match:
+            print(f"✅ 匹配成功! 第{best_match_position+1}行, 置信度: {max_confidence:.3f}")
+            return True, best_match_position, max_confidence
+        else:
+            print(f"❌ 匹配失败, 最高置信度: {max_confidence:.3f} < {match_threshold}")
+            return False, -1, max_confidence
+
+    def calculate_text_similarity(self, text1: str, text2: str):
+        """计算两个文本的相似度"""
+        # 简单的相似度算法：基于公共子字符串
+        text1 = text1.replace(" ", "").replace("，", "").replace("。", "").replace("！", "").replace("？", "")
+        text2 = text2.replace(" ", "").replace("，", "").replace("。", "").replace("！", "").replace("？", "")
+        
+        if not text1 or not text2:
+            return 0.0
+        
+        # 计算最长公共子序列
+        def lcs_length(s1, s2):
+            m, n = len(s1), len(s2)
+            dp = [[0] * (n + 1) for _ in range(m + 1)]
+            
+            for i in range(1, m + 1):
+                for j in range(1, n + 1):
+                    if s1[i-1] == s2[j-1]:
+                        dp[i][j] = dp[i-1][j-1] + 1
+                    else:
+                        dp[i][j] = max(dp[i-1][j], dp[i][j-1])
+            
+            return dp[m][n]
+        
+        lcs_len = lcs_length(text1, text2)
+        max_len = max(len(text1), len(text2))
+        similarity = lcs_len / max_len if max_len > 0 else 0.0
+        
+        # 额外加分：如果text1是text2的子串或vice versa
+        if text1 in text2 or text2 in text1:
+            similarity += 0.2
+        
+        return min(similarity, 1.0)
+
+    def update_script_display(self):
+        """更新悬浮窗中的文稿显示"""
+        if not hasattr(self, 'floating_window') or not self.floating_window:
+            return
+        
+        if not self.imported_script_lines or self.current_script_position < 0:
+            return
+        
+        # 显示当前位置和接下来的两行（总共三行）
+        display_lines = []
+        for i in range(3):
+            line_index = self.current_script_position + i
+            if line_index < len(self.imported_script_lines):
+                line_text = self.imported_script_lines[line_index]
+                line_number = line_index + 1
+                
+                # 当前行用特殊标记
+                if i == 0:
+                    display_lines.append(f"▶ {line_number:02d}. {line_text}")
+                else:
+                    display_lines.append(f"  {line_number:02d}. {line_text}")
+        
+        if display_lines:
+            script_text = f"📄 演讲文稿跟随 (第{self.current_script_position + 1}行)\n\n" + "\n".join(display_lines)
+            self.floating_window.set_script_text(script_text)
+            print(f"📺 悬浮窗文稿显示已更新到第{self.current_script_position + 1}行")
+
+    def process_complete_sentence(self, sentence: str):
+        """处理完整的识别句子，进行文稿匹配"""
+        if not self.script_follow_enabled:
+            return
+        
+        print(f"🎯 处理完整句子: '{sentence}'")
+        
+        # 进行文稿匹配
+        is_match, position, confidence = self.match_speech_to_script(sentence)
+        
+        if is_match and position >= 0:
+            # 更新当前位置
+            old_position = self.current_script_position
+            self.current_script_position = position
+            
+            # 更新悬浮窗显示
+            self.update_script_display()
+            
+            # 显示匹配状态
+            status_msg = f"文稿跟随: 第{old_position + 1}行 → 第{position + 1}行 (置信度: {confidence:.2f})"
+            self.update_status(status_msg)
+            
+            print(f"📍 文稿位置更新: {old_position + 1} → {position + 1}")
+        else:
+            print(f"🔍 未找到匹配的文稿位置 (置信度: {confidence:.2f})")

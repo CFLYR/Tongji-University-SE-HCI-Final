@@ -8,6 +8,7 @@ from unified_ppt_gesture_controller import UnifiedPPTGestureController
 import RealTimeVoiceToText as RTVTT
 import threading
 import speech_text_manager
+from PySide6.QtCore import QObject, Signal
 
 
 class MainController(QObject):
@@ -41,6 +42,9 @@ class MainController(QObject):
         self.last_fps_update = 0
         self.current_fps = 0
 
+        # 主窗口引用
+        self.main_window = None
+
         # 手势配置
         self.gesture_configs = {
             "next_slide": {"gesture_type": "swipe_right", "enabled": True},
@@ -59,7 +63,10 @@ class MainController(QObject):
         # 初始化演讲稿管理器
         self.speech_manager = speech_text_manager.SpeechTextManager()
 
-
+    def set_main_window(self, main_window):
+        """设置主窗口引用"""
+        self.main_window = main_window
+        print("✅ 主控制器已设置主窗口引用")
 
     def start_system(self) -> bool:
         """启动系统"""

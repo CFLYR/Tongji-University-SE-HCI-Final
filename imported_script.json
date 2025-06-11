@@ -1,6 +1,6 @@
 {
   "title": "导入的演讲文稿",
-  "import_time": "2025-06-12 00:10:51",
+  "import_time": "2025-06-12 00:27:18",
   "total_lines": 39,
   "lines": [
     {
@@ -18,7 +18,7 @@
     {
       "line_number": 3,
       "text": "这个项目主要解决演讲过程中的手势控制和语音控制问题。",
-      "is_added_to_keywords": true,
+      "is_added_to_keywords": false,
       "character_count": 26
     },
     {
@@ -36,7 +36,7 @@
     {
       "line_number": 6,
       "text": "这往往会打断演讲的流畅性，影响与观众的互动。",
-      "is_added_to_keywords": true,
+      "is_added_to_keywords": false,
       "character_count": 22
     },
     {
@@ -60,7 +60,7 @@
     {
       "line_number": 10,
       "text": "通过向右滑动手势，我们可以切换到下一页。",
-      "is_added_to_keywords": true,
+      "is_added_to_keywords": false,
       "character_count": 20
     },
     {
