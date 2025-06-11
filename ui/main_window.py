@@ -8,6 +8,8 @@ from PySide6.QtCore import QSize
 from PySide6.QtSvgWidgets import QSvgWidget
 from main_controller import MainController
 from ppt_floating_window import PPTFloatingWindow
+from keyword_manager import KeywordManagerDialog
+from script_manager import ScriptImportDialog, ScriptManager
 import cv2
 import numpy as np
 import win32com.client
@@ -23,6 +25,11 @@ class MainWindow(QMainWindow):
 
         # 初始化主控制器
         self.controller = MainController()
+          # 初始化语音关键词列表
+        self.voice_keywords = ["下一页"]
+        
+        # 初始化文稿管理器
+        self.script_manager = ScriptManager()
 
         # 创建主窗口部件
         main_widget = QWidget()
@@ -182,10 +189,22 @@ class MainWindow(QMainWindow):
                     # 连接悬浮窗的录像信号
                     self.floating_window.recording_started.connect(self.on_recording_started)
                     self.floating_window.recording_stopped.connect(self.on_recording_stopped)
-                    self.floating_window.subtitle_updated.connect(self.on_subtitle_updated)
-
-                    # 传递主控制器引用到悬浮窗，用于检查手势识别状态
-                    self.floating_window.set_main_controller(self.controller)                    # 如果有演讲稿管理器，设置到悬浮窗
+                    self.floating_window.subtitle_updated.connect(self.on_subtitle_updated)                    # 传递主控制器引用到悬浮窗，用于检查手势识别状态
+                    self.floating_window.set_main_controller(self.controller)
+                    
+                    # 传递文稿管理器到悬浮窗
+                    if hasattr(self, 'script_manager') and self.script_manager:
+                        # 尝试加载已导入的文稿
+                        if self.script_manager.load_imported_script():
+                            # 获取文稿预览文本
+                            first_line = self.script_manager.get_line_by_number(1)
+                            if first_line:
+                                self.floating_window.set_script_text(f"📄 演讲文稿已加载\n{first_line[:50]}...")
+                            print("✅ 已将导入的文稿加载到悬浮窗")
+                        else:
+                            self.floating_window.set_script_text("📄 文稿展示区\n请先导入演讲文稿")
+                    
+                    # 如果有演讲稿管理器，设置到悬浮窗
                     if hasattr(self.controller, 'speech_manager'):
                         self.floating_window.set_speech_manager(self.controller.speech_manager)
 
@@ -214,7 +233,7 @@ class MainWindow(QMainWindow):
         if hasattr(self, "_drag_active") and self._drag_active and event.buttons() & Qt.LeftButton:
             self.move(event.globalPosition().toPoint() - self._drag_pos)
             event.accept()
-
+            
     def mouseReleaseEvent(self, event):
         self._drag_active = False
 
@@ -226,46 +245,16 @@ class MainWindow(QMainWindow):
 
     def toggle_voice_recognition(self, enabled: bool):
         """切换语音识别状态"""
-        next_page_keywords = []
-
+        # 直接使用已保存的关键词，不再弹出设置对话框
         if enabled:
-            # 创建多行文本输入对话框
-            dialog = QDialog(self)
-            dialog.setWindowTitle("设置翻页关键词")
-            dialog.setMinimumSize(400, 300)
+            # 启动语音识别，使用当前保存的关键词
+            self.controller.toggle_voice_recognition(True, self.voice_keywords)
+        else:
+            # 停止语音识别
+            self.controller.toggle_voice_recognition(False, [])
 
-            layout = QVBoxLayout(dialog)
-
-            # 添加说明标签
-            label = QLabel("请输入触发下一页的语音关键词（每行一个词）:")
-            layout.addWidget(label)
-
-            # 添加文本框
-            text_edit = QTextEdit()
-            text_edit.setPlaceholderText("例如：下一页\n下一张\n继续")
-            layout.addWidget(text_edit)
-
-            # 添加按钮框
-            button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-            button_box.accepted.connect(dialog.accept)
-            button_box.rejected.connect(dialog.reject)
-            layout.addWidget(button_box)
-
-            # 显示对话框并等待用户操作
-            if dialog.exec() == QDialog.Accepted:
-                # 获取输入的文本并按行分割
-                text = text_edit.toPlainText().strip()
-                if text:
-                    next_page_keywords = [line.strip() for line in text.split('\n') if line.strip()]
-                else:
-                    # 用户未输入内容，保持禁用状态
-                    enabled = False
-            else:
-                # 用户取消操作，保持禁用状态
-                enabled = False        # 更新控制器状态
-        self.update_status(f"语音识别已{'开启' if enabled else '关闭'}")
-
-        # 控制字幕复选框的可用性
+        # 更新状态显示
+        self.update_status(f"语音识别已{'开启' if enabled else '关闭'}")        # 控制字幕复选框的可用性
         self.subtitle_checkbox.setEnabled(enabled)
         if not enabled:
             # 禁用语音识别时，也禁用字幕显示
@@ -273,16 +262,61 @@ class MainWindow(QMainWindow):
             self.subtitle_checkbox.setChecked(False)
             self.subtitle_checkbox.blockSignals(False)
 
-        # 如果用户取消了操作，需要重置复选框状态
-        if not enabled:
-            self.voice_checkbox.blockSignals(True)  # 防止触发信号循环
-            self.voice_checkbox.setChecked(False)
-            self.voice_checkbox.blockSignals(False)
-
+    def show_keyword_settings(self):
+        """显示关键词设置对话框"""
+        dialog = KeywordManagerDialog(self, self.voice_keywords)
+        
+        def on_keywords_updated(keywords):
+            self.voice_keywords = keywords
+            self.update_status(f"关键词已更新，共 {len(keywords)} 个")
+            print(f"📝 语音关键词已更新: {keywords}")
+        
+        dialog.keywords_changed.connect(on_keywords_updated)
+        dialog.exec() 
+        
     def update_detection_interval(self, interval: int):
         """更新检测间隔"""
         self.controller.update_detection_interval(interval)
         self.update_status(f"已更新检测间隔: {interval}ms")
+    
+    def show_keyword_settings(self):
+        """显示关键词设置对话框"""
+        dialog = KeywordManagerDialog(self, self.voice_keywords)
+        
+        def on_keywords_updated(keywords):
+            self.voice_keywords = keywords
+            self.update_status(f"关键词已更新，共 {len(keywords)} 个")
+            print(f"📝 语音关键词已更新: {keywords}")
+        
+        dialog.keywords_changed.connect(on_keywords_updated)
+        dialog.exec()
+    
+    def show_script_import_dialog(self):
+        """显示文稿导入对话框"""
+        dialog = ScriptImportDialog(self, self.voice_keywords)
+        
+        def on_keywords_updated(keywords):
+            self.voice_keywords = keywords
+            
+            # 尝试加载已导入的文稿到文稿管理器
+            success = self.script_manager.load_imported_script()
+            if success:
+                # 如果悬浮窗存在，更新悬浮窗中的文稿显示
+                if hasattr(self, 'floating_window') and self.floating_window:
+                    # 获取文稿的第一行作为预览
+                    first_line = self.script_manager.get_line_by_number(1)
+                    if first_line:
+                        self.floating_window.set_script_text(f"📄 文稿已导入\n{first_line[:50]}...")
+                    else:
+                        self.floating_window.set_script_text("📄 文稿已导入，可以开始演示")
+                    
+                    print("✅ 文稿已同步到悬浮窗")
+            
+            self.update_status(f"文稿导入完成，关键词已更新，共 {len(keywords)} 个")
+            print(f"📄 从文稿导入的关键词已更新: {keywords}")
+        
+        dialog.keywords_updated.connect(on_keywords_updated)
+        dialog.exec()
 
     def update_gesture_mapping(self, action: str, gesture: str):
         """更新手势映射"""
@@ -974,13 +1008,67 @@ class MainWindow(QMainWindow):
         self.voice_label.setStyleSheet("background-color: #F5F5F5; padding: 10px; border-radius: 5px;")
         voice_layout.addWidget(self.voice_label)
 
-        voice_layout.addStretch()
-
-        # 语音识别按钮
+        voice_layout.addStretch()        # 语音识别按钮
         self.voice_checkbox = QCheckBox("启用语音识别")
         self.voice_checkbox.setStyleSheet("QCheckBox {}")
 
         voice_layout.addWidget(self.voice_checkbox, alignment=Qt.AlignLeft)
+          # 关键词设置按钮
+        keyword_layout = QHBoxLayout()
+        keyword_layout.setContentsMargins(0, 5, 0, 5)
+        keyword_layout.setSpacing(8)
+        
+        self.keyword_settings_btn = QPushButton("设置关键词")
+        self.keyword_settings_btn.setFixedHeight(32)
+        self.keyword_settings_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #f39c12;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                font-size: 12px;
+                font-weight: bold;
+                padding: 6px 12px;
+                margin: 2px;
+                min-height: 20px;
+            }
+            QPushButton:hover {
+                background-color: #e67e22;
+            }
+            QPushButton:pressed {
+                background-color: #d35400;
+            }
+        """)
+        self.keyword_settings_btn.clicked.connect(self.show_keyword_settings)
+        
+        # 文稿导入按钮
+        self.script_import_btn = QPushButton("导入文稿")
+        self.script_import_btn.setFixedHeight(32)
+        self.script_import_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #27ae60;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                font-size: 12px;
+                font-weight: bold;
+                padding: 6px 12px;
+                margin: 2px;
+                min-height: 20px;
+            }
+            QPushButton:hover {
+                background-color: #2ecc71;
+            }
+            QPushButton:pressed {
+                background-color: #229954;
+            }
+        """)
+        self.script_import_btn.clicked.connect(self.show_script_import_dialog)
+        
+        keyword_layout.addWidget(self.keyword_settings_btn)
+        keyword_layout.addWidget(self.script_import_btn)
+        keyword_layout.addStretch()
+        voice_layout.addLayout(keyword_layout)
         
         # 字幕显示按钮
         self.subtitle_checkbox = QCheckBox("显示AI字幕")
