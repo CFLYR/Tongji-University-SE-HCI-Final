@@ -2,7 +2,7 @@ from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                                QPushButton, QLabel, QStackedWidget, QFileDialog,
                                QSpinBox, QComboBox, QGroupBox, QFormLayout, QSpacerItem,
                                QSizePolicy, QCheckBox, QDialog,QTextEdit,QDialogButtonBox)
-from PySide6.QtCore import Qt, Signal, QTimer
+from PySide6.QtCore import Qt, Signal, QTimer, QThread
 from PySide6.QtGui import QIcon, QPixmap, QImage
 from PySide6.QtCore import QSize
 from PySide6.QtSvgWidgets import QSvgWidget
@@ -10,13 +10,21 @@ from main_controller import MainController
 from ppt_floating_window import PPTFloatingWindow
 from keyword_manager import KeywordManagerDialog
 from script_manager import ScriptImportDialog, ScriptManager
+from ppt_content_extractor import PPTContentExtractor
+from ppt_ai_advisor import PPTAIAdvisor
 import cv2
 import numpy as np
 import win32com.client
 import os
-
+import threading
+import traceback
 
 class MainWindow(QMainWindow):
+    # 在类级别定义信号
+    ai_output_updated = Signal(str)
+    ai_button_reset = Signal()
+    status_updated = Signal(str, bool)
+    
     def __init__(self):
         super().__init__()
         self.setWindowTitle("大学生Presentation助手")
@@ -25,16 +33,18 @@ class MainWindow(QMainWindow):
         self.controller = MainController()
         self.controller.set_main_window(self)  # 设置主窗口引用
           # 初始化语音关键词列表
-        self.voice_keywords = ["下一页"]
-          # 初始化文稿管理器
+        self.voice_keywords = ["下一页"]        # 初始化文稿管理器
         self.script_manager = ScriptManager()
+        
+        # 初始化PPT内容提取器和AI顾问
+        self.ppt_extractor = PPTContentExtractor()
+        self.ai_advisor = PPTAIAdvisor()
+        self.current_ppt_content = None  # 当前PPT的内容
         
         # 文稿跟随状态
         self.script_follow_enabled = False
         self.current_script_position = 0  # 当前演讲到的位置（行号，从0开始）
-        self.imported_script_lines = []  # 导入的文稿行列表
-
-        # 创建主窗口部件
+        self.imported_script_lines = []  # 导入的文稿行列表        # 创建主窗口部件
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
 
@@ -81,6 +91,8 @@ class MainWindow(QMainWindow):
         self.controller.start_system()
 
         self.floating_window = None  # 悬浮窗实例
+        
+        
 
     def connect_signals(self):
         # 连接控制器信号
@@ -107,6 +119,11 @@ class MainWindow(QMainWindow):
         self.voice_checkbox.stateChanged.connect(self.toggle_voice_recognition)
         self.subtitle_checkbox.stateChanged.connect(self.toggle_subtitle_display)
         self.interval_spin.valueChanged.connect(self.update_detection_interval)
+        
+        self.ai_output_updated.connect(self._update_ai_output_direct)
+        self.ai_button_reset.connect(self._reset_ai_button_direct)
+        self.status_updated.connect(self._update_status_direct)
+        
 
         # 连接手势映射下拉框
         for action, combo in self.gesture_mappings.items():
@@ -166,10 +183,14 @@ class MainWindow(QMainWindow):
             self.update_status(f"已打开PPT文件: {file_path}")
             self.file_path_label.setText(file_path)
             self.controller.ppt_controller.current_ppt_path = file_path
-
+    
             img_path = self.export_first_slide_as_image(file_path)
             self.show_ppt_first_slide_preview(img_path)
-
+            
+            # 启用AI优化建议按钮
+            self.ai_chat_btn.setEnabled(True)
+            print(f"✅ AI优化建议按钮已启用，PPT路径: {file_path}")
+            
     def toggle_max_restore(self):
         if self.isMaximized():
             self.showNormal()
@@ -457,11 +478,12 @@ class MainWindow(QMainWindow):
         seconds = runtime % 60
         self.duration_label.setText(f"演示时长: {hours:02d}:{minutes:02d}:{seconds:02d}")
 
-    # 信号处理函数
+    # 信号处理函数    
     def on_ppt_file_opened(self, file_path: str):
         """PPT文件打开处理"""
         self.file_path_label.setText(file_path)
         self.start_btn.setEnabled(True)
+        self.ai_chat_btn.setEnabled(True)  # 启用AI按钮
         self.update_status("PPT文件已选择")
 
     def on_presentation_started(self):
@@ -904,12 +926,81 @@ class MainWindow(QMainWindow):
         self.recording_status_label = QLabel("")
         self.recording_status_label.setStyleSheet(
             "background-color: #FFF3E0; color: #F57C00; border-radius: 6px; padding: 8px;")
-        self.recording_status_label.hide()  # 初始隐藏
-
-        status_layout.addWidget(self.gesture_status_label)
+        self.recording_status_label.hide()  # 初始隐藏        status_layout.addWidget(self.gesture_status_label)
         status_layout.addWidget(self.voice_status_label)
         status_layout.addWidget(self.recording_status_label)
         layout.addWidget(status_group)
+
+        # AI对话优化建议
+        ai_group = QGroupBox("")
+        ai_layout = QVBoxLayout(ai_group)
+        ai_layout.setSpacing(10)
+        ai_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # 顶部自定义标题栏
+        ai_title_layout = QHBoxLayout()
+        ai_title_layout.setSpacing(4)
+        ai_svg_widget = QSvgWidget("resources/icons/info.svg")  # 使用合适的图标
+        ai_svg_widget.setFixedSize(20, 20)
+        ai_title_label = QLabel("AI优化建议")
+        ai_title_label.setStyleSheet("font-size: 18px; font-weight: bold; margin-left: 1px;color: #1a1a1a")
+        ai_title_layout.addWidget(ai_svg_widget)
+        ai_title_layout.addWidget(ai_title_label)
+        ai_title_layout.addStretch()
+        
+        ai_layout.addLayout(ai_title_layout)
+        ai_layout.addSpacing(10)
+        
+        # AI对话按钮
+        self.ai_chat_btn = QPushButton("💬 获取PPT优化建议")
+        self.ai_chat_btn.setFixedHeight(35)
+        self.ai_chat_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #165DFF;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font-size: 13px;
+                font-weight: bold;
+                padding: 8px 12px;
+            }
+            QPushButton:hover {
+                background-color: #4080FF;
+            }
+            QPushButton:pressed {
+                background-color: #0E4BC7;
+            }
+            QPushButton:disabled {
+                background-color: #CCCCCC;
+                color: #888888;
+            }
+        """)
+        self.ai_chat_btn.setEnabled(False)  # 初始禁用，需要打开PPT后才能使用
+        self.ai_chat_btn.clicked.connect(self.request_ai_advice)
+        ai_layout.addWidget(self.ai_chat_btn)
+        
+        # AI输出框
+        self.ai_output_text = QTextEdit()
+        self.ai_output_text.setFixedHeight(150)
+        self.ai_output_text.setPlaceholderText("AI优化建议将在这里显示...\n\n请先打开PPT文件，然后点击上方按钮获取优化建议。")
+        self.ai_output_text.setStyleSheet("""
+            QTextEdit {
+                background-color: #F8F9FA;
+                border: 2px solid #E1E5E9;
+                border-radius: 8px;
+                padding: 10px;
+                font-size: 12px;
+                line-height: 1.4;
+                color: #2C3E50;
+            }
+            QTextEdit:focus {
+                border-color: #165DFF;
+            }
+        """)
+        self.ai_output_text.setReadOnly(True)
+        ai_layout.addWidget(self.ai_output_text)
+        
+        layout.addWidget(ai_group)
 
         layout.addStretch()
         return panel
@@ -1659,6 +1750,7 @@ class MainWindow(QMainWindow):
             # 更新悬浮窗显示
             self.update_script_display()
             
+                       
             # 显示匹配状态
             status_msg = f"文稿跟随: 第{old_position + 1}行 → 第{position + 1}行 (置信度: {confidence:.2f})"
             self.update_status(status_msg)
@@ -1666,3 +1758,171 @@ class MainWindow(QMainWindow):
             print(f"📍 文稿位置更新: {old_position + 1} → {position + 1}")
         else:
             print(f"🔍 未找到匹配的文稿位置 (置信度: {confidence:.2f})")
+
+    def request_ai_advice(self):
+        """请求AI优化建议"""
+        # 检查是否有打开的PPT
+        if not self.controller.ppt_controller.current_ppt_path:
+            self.ai_output_text.setText("❌ 请先打开一个PPT文件，然后再请求AI优化建议。")
+            self.update_status("请先打开PPT文件", is_error=True)
+            return
+        
+        # 显示加载状态
+        self.ai_output_text.setText("🤖 AI正在分析您的PPT内容，请稍候...\n\n这可能需要几秒钟时间。")
+        self.ai_chat_btn.setEnabled(False)
+        self.ai_chat_btn.setText("🔄 分析中...")
+        
+        # 在新线程中处理AI请求，避免阻塞UI
+        ai_thread = threading.Thread(target=self._process_ai_request, daemon=True)
+        ai_thread.start()
+    
+    def _process_ai_request(self):
+        """在后台线程中处理AI请求"""
+        try:
+            ppt_path = self.controller.ppt_controller.current_ppt_path
+            
+            # 提取PPT内容
+            self.update_status("正在提取PPT内容...")
+            content_result = self.ppt_extractor.extract_ppt_content(ppt_path)
+            
+            if "error" in content_result:
+                self._update_ai_output_on_main_thread(f"❌ 提取PPT内容失败：{content_result['error']}")
+                return
+            
+            # 保存当前PPT内容
+            self.current_ppt_content = content_result
+              # 请求AI建议
+            self.update_status("正在获取AI优化建议...")
+            ppt_text = content_result.get("full_text", "")
+            advice = self.ai_advisor.get_ppt_optimization_advice(ppt_text, "detailed")
+            
+            # 格式化输出
+            formatted_advice = self._format_ai_advice(advice, len(content_result.get("slides", [])))
+                  # 在主线程中更新UI
+            self._update_ai_output_on_main_thread(formatted_advice)
+            self._update_status_on_main_thread("AI优化建议获取完成！")
+            
+        except Exception as e:
+            error_msg = f"❌ 获取AI建议时发生错误：\n{str(e)}\n\n请检查网络连接或稍后重试。"
+            self._update_ai_output_on_main_thread(error_msg)
+            self._update_status_on_main_thread("获取AI建议失败", is_error=True)
+        finally:
+            # 恢复按钮状态
+            self._reset_ai_button_on_main_thread()
+
+    def _update_ai_output_direct(self, text: str):
+        """直接在主线程中更新AI输出文本"""
+        try:
+            if hasattr(self, 'ai_output_text'):
+                self.ai_output_text.setText(text)
+                print(f"✅ AI输出文本已更新")
+        except Exception as e:
+            print(f"❌ 更新AI输出文本失败: {e}")
+
+    def _reset_ai_button_direct(self):
+        """直接在主线程中重置AI按钮状态"""
+        try:
+            if hasattr(self, 'ai_chat_btn'):
+                self.ai_chat_btn.setEnabled(True)
+                self.ai_chat_btn.setText("💬 获取PPT优化建议")
+                print(f"✅ AI按钮状态已重置")
+        except Exception as e:
+            print(f"❌ 重置AI按钮失败: {e}")
+
+    def _update_status_direct(self, message: str, is_error: bool = False):
+        """直接在主线程中更新状态"""
+        try:
+            self.update_status(message, is_error)
+            print(f"✅ 状态已更新: {message}")
+        except Exception as e:
+            print(f"❌ 更新状态失败: {e}")
+
+    def _format_ai_advice(self, advice: str, slide_count: int) -> str:
+        """格式化AI建议输出"""
+        from datetime import datetime
+        
+        header = f"🤖 AI优化建议 (共{slide_count}张幻灯片)\n"
+        header += "=" * 40 + "\n\n"
+        
+        # 添加时间戳
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        header += f"📅 分析时间: {timestamp}\n\n"
+        
+        # 主要建议内容
+        main_content = advice + "\n\n"
+        
+        # 添加使用提示
+        footer = "💡 使用提示:\n"
+        footer += "• 点击按钮可重新获取建议\n"
+        footer += "• 修改PPT后可获取新的优化建议\n"
+        footer += "• 建议结合具体演讲场景进行调整"
+        
+        return header + main_content + footer
+
+    def _process_ai_request(self):
+        """在后台线程中处理AI请求"""
+        try:
+            print("🤖 开始处理AI请求...")
+            
+            # 获取PPT路径
+            ppt_path = self.controller.ppt_controller.current_ppt_path
+            
+            # 提取PPT内容
+            print("📄 提取PPT内容...")
+            content_result = self.ppt_extractor.extract_ppt_content(ppt_path)
+            
+            if "error" in content_result:
+                error_msg = f"❌ 提取PPT内容失败：{content_result['error']}"
+                print(error_msg)
+                # 使用信号发送更新
+                self.ai_output_updated.emit(error_msg)
+                self.ai_button_reset.emit()
+                return
+            
+            # 调用AI分析
+            print("🤖 调用AI分析...")
+            ppt_text = content_result.get("full_text", "")
+            advice = self.ai_advisor.get_ppt_optimization_advice(ppt_text, "detailed")
+            
+            # 格式化输出
+            formatted_advice = self._format_ai_advice(advice, len(content_result.get("slides", [])))
+            
+            print("✅ AI分析成功完成")
+            self.status_updated.emit("AI优化建议获取完成！", False)
+            
+            # 使用信号发送更新
+            self.ai_output_updated.emit(formatted_advice)
+            self.ai_button_reset.emit()
+            
+        except Exception as e:
+            error_msg = f"❌ 处理AI请求时发生错误：{str(e)}"
+            print(error_msg)
+            print(f"❌ 详细错误信息: {traceback.format_exc()}")
+            
+            # 使用信号发送更新
+            self.ai_output_updated.emit(error_msg)
+            self.status_updated.emit("获取AI建议失败", True)
+            self.ai_button_reset.emit()
+
+    def request_ai_advice(self):
+        """请求AI优化建议"""
+        # 添加调试信息
+        print(f"🔍 DEBUG: 当前PPT路径: {self.controller.ppt_controller.current_ppt_path}")
+        print(f"🔍 DEBUG: AI按钮是否启用: {self.ai_chat_btn.isEnabled()}")
+        
+        # 检查是否有打开的PPT
+        if not self.controller.ppt_controller.current_ppt_path:
+            self.ai_output_text.setText("❌ 请先打开一个PPT文件，然后再请求AI优化建议。")
+            self.update_status("请先打开PPT文件", is_error=True)
+            return
+        
+        # 禁用按钮，防止重复点击
+        self.ai_chat_btn.setEnabled(False)
+        self.ai_chat_btn.setText("AI分析中... ⏳")
+        
+        # 显示加载信息
+        self.ai_output_text.setText("🤖 AI正在分析您的PPT内容，请稍候...\n\n这可能需要几秒钟时间。")
+        self.update_status("AI正在分析PPT内容...")
+        
+        # 在后台线程中处理AI请求
+        threading.Thread(target=self._process_ai_request, daemon=True).start()
