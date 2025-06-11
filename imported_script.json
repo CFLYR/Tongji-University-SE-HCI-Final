@@ -1,6 +1,6 @@
 {
   "title": "导入的演讲文稿",
-  "import_time": "2025-06-12 00:27:18",
+  "import_time": "2025-06-12 02:13:14",
   "total_lines": 39,
   "lines": [
     {
@@ -30,7 +30,7 @@
     {
       "line_number": 5,
       "text": "在传统的PPT演示中，演讲者需要频繁地操作鼠标或键盘。",
-      "is_added_to_keywords": false,
+      "is_added_to_keywords": true,
       "character_count": 27
     },
     {

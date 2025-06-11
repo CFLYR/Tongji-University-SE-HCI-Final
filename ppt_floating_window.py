@@ -865,8 +865,7 @@ class PPTFloatingWindow(QWidget):
                 QPushButton:hover {
                     background: #466BB0;
                 }                QPushButton:pressed {
-                    background: #0F4FDD;
-                }            """)  
+                    background: #0F4FDD;                }            """)  
             
     def start_voice_recognition(self):
         """启动语音识别"""
@@ -882,17 +881,24 @@ class PPTFloatingWindow(QWidget):
                 print("❌ 主控制器未设置")
                 return
             
+            # 【新增】清空字幕显示，防止显示旧内容
+            if hasattr(self, 'subtitle_display'):
+                self.subtitle_display.clear_subtitles()
+                print("🧹 字幕显示已清空，防止残留旧内容")
+            
             # 使用传递过来的关键词启动语音识别
             keywords = getattr(self, 'voice_keywords', ["下一页"])
             print(f"🔧 使用关键词启动语音识别: {keywords}")
             
             # 通过主控制器启动语音识别，传递关键词
             self.main_controller.toggle_voice_recognition(True, keywords)
-            
-            # 启动语音字幕更新定时器
+              # 启动语音字幕更新定时器（只有在字幕显示启用时才启动）
             if hasattr(self, 'voice_subtitle_timer'):
-                self.voice_subtitle_timer.start(500)  # 每500ms更新一次字幕
-                print("⏰ 字幕更新定时器已启动")
+                if self.subtitle_display_enabled:
+                    self.voice_subtitle_timer.start(500)  # 每500ms更新一次字幕
+                    print("⏰ 字幕更新定时器已启动 (字幕显示已启用)")
+                else:
+                    print("⚠️ 字幕显示未启用，字幕定时器未启动")
             else:
                 print("❌ DEBUG: voice_subtitle_timer 不存在")
             
@@ -1615,7 +1621,6 @@ class PPTFloatingWindow(QWidget):
                 event.accept()
         else:
             QPushButton.mouseReleaseEvent(self.minimize_btn, event)
-            
     def set_subtitle_display_enabled(self, enabled: bool):
         """设置字幕显示开关"""
         print(f"🔧 设置字幕显示状态: {enabled}")
@@ -1624,14 +1629,17 @@ class PPTFloatingWindow(QWidget):
         if enabled:
             # 启用字幕显示
             print("🎯 正在启用字幕显示...")
-            if hasattr(self, 'voice_subtitle_timer') and self.main_controller:
-                # 如果语音识别正在运行，开始显示字幕
-                if (self.main_controller.audio_thread and 
-                    self.main_controller.audio_thread.is_alive()):
+            if hasattr(self, 'voice_subtitle_timer'):
+                # 检查语音识别是否正在运行
+                voice_running = RTVTT.is_voice_recognition_running() if RTVTT else False
+                print(f"🔍 DEBUG: 语音识别运行状态: {voice_running}")
+                
+                if voice_running:
                     self.voice_subtitle_timer.start(500)
                     print("⏰ 字幕更新定时器已启动 (500ms间隔)")
                 else:
                     print("⚠️ 语音识别未运行，字幕定时器暂未启动")
+                    print("💡 提示: 请先启动语音识别，然后启用字幕显示")
             print("✅ 字幕显示已启用")
         else:
             # 禁用字幕显示

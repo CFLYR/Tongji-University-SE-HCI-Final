@@ -339,7 +339,7 @@ class MainWindow(QMainWindow):
             self.update_status(f"文稿导入完成，关键词已更新，共 {len(keywords)} 个")
             print(f"📄 从文稿导入的关键词已更新: {keywords}")
         
-        dialog.keywords_updated.connect(on_keywords_updated)
+        dialog.keywords_changed.connect(on_keywords_updated)
         dialog.exec()
         
     def show_script_import_dialog(self):

@@ -363,8 +363,18 @@ def start_real_time_voice_recognition(mic_device_index=None):
         return True
     
     try:
-        # 获取识别器
+        # 获取识别器并强制重新初始化transcriber
         recognizer = get_RTVTT_recognizer()
+        
+        # 重要：强制重新初始化transcriber，确保每次启动都是全新的
+        print("🔧 强制重新初始化阿里云transcriber...")
+        recognizer._RealTimeSpeechRecognizer__initialize_transcriber()
+        print("✅ 阿里云transcriber重新初始化完成")
+        
+        # 【新增】启动前清空识别内容，确保重新开始
+        recognizer.last_complete_sentence = ""
+        recognizer.current_text = ""
+        print("🧹 识别器内容已清空，确保重新开始")
         print("✅ 语音识别器已准备就绪")
         
         # 启动音频流线程
@@ -398,7 +408,16 @@ def start_real_time_voice_recognition(mic_device_index=None):
 def stop_real_time_voice_recognition():
     """停止实时语音识别"""
     print("🔧 DEBUG: stop_real_time_voice_recognition 被调用")
-    global _audio_stream_thread, RUNNING
+    global _audio_stream_thread, RUNNING, _RTVTT_recognizer
+    
+    # 先停止transcriber
+    if _RTVTT_recognizer and _RTVTT_recognizer.transcriber:
+        try:
+            print("🔧 正在停止阿里云transcriber...")
+            _RTVTT_recognizer.transcriber.stop()
+            print("✅ 阿里云transcriber已停止")
+        except Exception as e:
+            print(f"⚠️ 停止transcriber时出错: {e}")
     
     # 停止音频流
     with running_lock:
@@ -415,8 +434,16 @@ def stop_real_time_voice_recognition():
             print("✅ 音频流线程已结束")
     
     _audio_stream_thread = None
-    print("✅ 实时语音识别已停止")
-
+    
+    # 重要：清空和重置识别器，准备下次使用
+    if _RTVTT_recognizer is not None:
+        print("🔧 正在重置语音识别器...")
+        _RTVTT_recognizer.last_complete_sentence = ""
+        _RTVTT_recognizer.current_text = ""
+        _RTVTT_recognizer.transcriber = None  # 清空transcriber，强制下次重新初始化
+        print("✅ 语音识别器已重置")
+    
+    print("✅ 实时语音识别已完全停止")
 
 if __name__ == "__main__":
     # 默认麦克风
