@@ -530,7 +530,7 @@ class PPTFloatingWindow(QWidget):
         # PPT控制按钮区
         ppt_layout = QHBoxLayout()
         
-        self.btn_start = QPushButton("开始语音")
+        self.btn_start = QPushButton("开始")
         self.btn_prev = QPushButton("上一页")
         self.btn_next = QPushButton("下一页")
 
@@ -556,9 +556,9 @@ class PPTFloatingWindow(QWidget):
         ppt_layout.addWidget(self.btn_start)
         ppt_layout.addWidget(self.btn_prev)
         ppt_layout.addWidget(self.btn_next)
-        main_layout.addLayout(ppt_layout)
-        # 连接PPT控制按钮事件
-        self.btn_start.clicked.connect(self.toggle_voice_recognition)  # 开始/停止语音识别
+        main_layout.addLayout(ppt_layout)        # 连接PPT控制按钮事件
+        
+        self.btn_start.clicked.connect(self.toggle_start_functions)  # 统一控制函数
 
         # 连接上一页和下一页按钮
         self.btn_prev.clicked.connect(self.previous_slide)
@@ -628,39 +628,258 @@ class PPTFloatingWindow(QWidget):
 
         # AI字幕显示区（语音识别字幕显示）
         self.subtitle_display = SubtitleDisplayWidget()
-        main_layout.addWidget(self.subtitle_display)
-
-        # 设置整体样式
+        main_layout.addWidget(self.subtitle_display)        # 设置整体样式
         self.setStyleSheet("""
             PPTFloatingWindow {
                 background: rgba(255, 255, 255, 0.95);
                 border-radius: 10px;
                 border: 1px solid #CCCCCC;
-            }        """) 
-    def toggle_voice_recognition(self):
-        # 启动语音识别
-        if self.main_controller.audio_thread is None or not self.main_controller.audio_thread.is_alive():
-            self.main_controller.audio_thread = threading.Thread(target=RTVTT.start_audio_stream,
-                                                                 args=(self.main_controller.voice_recognizer,))
+            }        """)
+        
+    def toggle_start_functions(self):
+        """统一控制函数：根据当前运行状态和主窗口复选框状态决定切换功能"""
+        print("🔄 DEBUG: toggle_start_functions 被调用")
+        
+        if not self.main_controller:
+            print("❌ 主控制器未设置，无法检查复选框状态")
+            return
+        
+        # 检查当前运行状态
+        voice_running = self.main_controller.audio_thread and self.main_controller.audio_thread.is_alive()
+        gesture_running = self.is_gesture_active
+        
+        print(f"🔍 DEBUG: 当前运行状态 - 语音识别: {voice_running}, 手势识别: {gesture_running}")
+        
+        # 如果有任何功能正在运行，先停止所有功能
+        if voice_running or gesture_running:
+            print("⏹️ 检测到功能正在运行，停止所有功能")
+            if voice_running:
+                self.stop_voice_recognition()
+            if gesture_running:
+                self.stop_gesture_control()
+            
+            # 重置按钮为默认状态
+            self.btn_start.setText("开始")
+            self.btn_start.setStyleSheet("""
+                QPushButton {
+                    background: #165DFF;
+                    color: white;
+                    border-radius: 5px;
+                    font-weight: bold;
+                    padding: 0 8px;
+                    border: none;
+                    font-size: 11px;
+                }
+                QPushButton:hover {
+                    background: #466BB0;
+                }
+                QPushButton:pressed {
+                    background: #0F4FDD;
+                }
+            """)
+            print("✅ 所有功能已停止")
+            return
+        
+        # 如果没有功能运行，根据主窗口复选框状态启动相应功能
+        print("▶️ 没有功能运行，根据主窗口设置启动功能")
+        
+        # 尝试获取主窗口实例
+        main_window = None
+        try:
+            # 从应用程序中查找主窗口
+            from PySide6.QtWidgets import QApplication
+            app = QApplication.instance()
+            if app:
+                for widget in app.allWidgets():
+                    if hasattr(widget, 'voice_checkbox') and hasattr(widget, 'gesture_checkbox'):
+                        main_window = widget
+                        break
+            
+            if not main_window:
+                print("❌ 无法找到主窗口，默认启用语音识别")
+                self.start_voice_recognition()
+                self._update_button_state("voice")
+                return
+                
+        except Exception as e:
+            print(f"❌ 查找主窗口时出错: {e}，默认启用语音识别")
+            self.start_voice_recognition()
+            self._update_button_state("voice")
+            return
+        
+        # 检查复选框状态
+        voice_enabled = main_window.voice_checkbox.isChecked() if hasattr(main_window, 'voice_checkbox') else False
+        gesture_enabled = main_window.gesture_checkbox.isChecked() if hasattr(main_window, 'gesture_checkbox') else False
+        
+        print(f"🔍 DEBUG: 主窗口设置 - 语音识别: {voice_enabled}, 手势识别: {gesture_enabled}")
+        
+        # 根据复选框状态启动相应功能
+        if voice_enabled and gesture_enabled:
+            print("🎤🖐️ 启动语音识别和手势控制")
+            self.start_voice_recognition()
+            self.start_gesture_control()
+            self._update_button_state("both")
+            
+        elif voice_enabled:
+            print("🎤 启动语音识别")
+            self.start_voice_recognition()
+            self._update_button_state("voice")
+            
+        elif gesture_enabled:
+            print("🖐️ 启动手势控制")
+            self.start_gesture_control()
+            self._update_button_state("gesture")
+            
+        else:
+            print("❌ 没有启用任何功能")
+            self._update_button_state("none")
+            print("⚠️ 请在主窗口勾选'启用语音识别'或'启用手势识别'复选框")
+    
+    def _update_button_state(self, mode):
+        """根据模式更新按钮状态"""
+        if mode == "both":
+            self.btn_start.setText("停止全部")
+            self.btn_start.setStyleSheet("""
+                QPushButton {
+                    background: #FF4D4F;
+                    color: white;
+                    border-radius: 5px;
+                    font-weight: bold;
+                    padding: 0 8px;
+                    border: none;
+                    font-size: 11px;
+                }
+                QPushButton:hover {
+                    background: #FF7875;
+                }
+                QPushButton:pressed {
+                    background: #D9363E;
+                }
+            """)
+        elif mode == "voice":
+            self.btn_start.setText("停止语音")
+            self.btn_start.setStyleSheet("""
+                QPushButton {
+                    background: #FF4D4F;
+                    color: white;
+                    border-radius: 5px;
+                    font-weight: bold;
+                    padding: 0 8px;
+                    border: none;
+                    font-size: 11px;
+                }
+                QPushButton:hover {
+                    background: #FF7875;
+                }
+                QPushButton:pressed {
+                    background: #D9363E;
+                }
+            """)
+        elif mode == "gesture":
+            self.btn_start.setText("停止手势")
+            self.btn_start.setStyleSheet("""
+                QPushButton {
+                    background: #FF4D4F;
+                    color: white;
+                    border-radius: 5px;
+                    font-weight: bold;
+                    padding: 0 8px;
+                    border: none;
+                    font-size: 11px;
+                }
+                QPushButton:hover {
+                    background: #FF7875;
+                }
+                QPushButton:pressed {
+                    background: #D9363E;
+                }
+            """)     
+        else:  # mode == "none"
+            self.btn_start.setText("无功能已启用")
+            self.btn_start.setStyleSheet("""
+                QPushButton {
+                    background: #165DFF;
+                    color: white;
+                    border-radius: 5px;
+                    font-weight: bold;
+                    padding: 0 8px;
+                    border: none;
+                    font-size: 11px;
+                }
+                QPushButton:hover {
+                    background: #466BB0;
+                }
+                QPushButton:pressed {
+                    background: #0F4FDD;
+                }
+            """)
+
+    def start_voice_recognition(self):
+        """启动语音识别"""
+        print("🎤 DEBUG: start_voice_recognition 被调用")
+        try:
+            if not self.main_controller:
+                print("❌ 主控制器未设置")
+                return
+                
+            # 启动语音识别
+            import RealTimeVoiceToText as RTVTT
+            import threading
+            
+            # 创建语音识别线程
+            self.main_controller.audio_thread = threading.Thread(
+                target=RTVTT.toggle_audio_stream,
+                args=(True,),
+                daemon=True
+            )
             self.main_controller.audio_thread.start()
             
             # 启动语音字幕更新定时器
             if hasattr(self, 'voice_subtitle_timer'):
                 self.voice_subtitle_timer.start(500)  # 每500ms更新一次字幕
+                
+            print("✅ 语音识别已启动")
             
-            # 更新按钮文本
-            self.btn_start.setText("停止语音")
+        except Exception as e:
+            print(f"❌ 启动语音识别失败: {e}")
+
+    def stop_voice_recognition(self):
+        """停止语音识别"""
+        print("🎤 DEBUG: stop_voice_recognition 被调用")
+        try:
+            if not self.main_controller:
+                print("❌ 主控制器未设置")
+                return
+                
+            # 停止语音识别
+            import RealTimeVoiceToText as RTVTT
+            RTVTT.toggle_audio_stream(False)
+            
+            # 停止字幕更新定时器
+            if hasattr(self, 'voice_subtitle_timer'):
+                self.voice_subtitle_timer.stop()
+                
+            # 清理线程引用
+            if hasattr(self.main_controller, 'audio_thread'):
+                self.main_controller.audio_thread = None
+                
+            print("✅ 语音识别已停止")
+            
+        except Exception as e:
+            print(f"❌ 停止语音识别失败: {e}")
+
+    def toggle_voice_recognition(self):
+        """切换语音识别状态（保持兼容性）"""
+        print("🎤 DEBUG: toggle_voice_recognition 被调用（兼容模式）")
+        # 启动语音识别
+        if self.main_controller.audio_thread is None or not self.main_controller.audio_thread.is_alive():
+            self.start_voice_recognition()
+            # 更新按钮文本（仅在兼容模式下）
             print("语音识别开启✅")
         # 停止语音识别
         elif self.main_controller.audio_thread and self.main_controller.audio_thread.is_alive():
-            RTVTT.toggle_audio_stream(False)
-            
-            # 停止语音字幕更新定时器
-            if hasattr(self, 'voice_subtitle_timer'):
-                self.voice_subtitle_timer.stop()
-            
-            # 更新按钮文本
-            self.btn_start.setText("开始语音")
+            self.stop_voice_recognition()
+            # 更新按钮文本（仅在兼容模式下）
             print("语音识别停止❌")
 
     def set_speech_manager(self, speech_manager):
@@ -916,9 +1135,9 @@ class PPTFloatingWindow(QWidget):
             self.stop_gesture_control()
         else:
             self.start_gesture_control()
-
+            
     def start_gesture_control(self):
-        """启动手势控制"""
+        """启动手势控制（仅核心功能）"""
         if not GESTURE_AVAILABLE or self.is_gesture_active:
             return
 
@@ -932,25 +1151,6 @@ class PPTFloatingWindow(QWidget):
             # 首先检查并设置PPT演示状态
             self._setup_ppt_presentation_state()
 
-            # 更新按钮状态
-            self.btn_start.setText("停止")
-            self.btn_start.setStyleSheet("""
-                QPushButton {
-                    background: #FF4D4F;
-                    color: white;
-                    border-radius: 5px;
-                    font-weight: bold;
-                    padding: 0 8px;
-                    border: none;
-                    font-size: 11px;
-                }
-                QPushButton:hover {
-                    background: #FF7875;
-                }
-                QPushButton:pressed {
-                    background: #D9363E;
-                }
-            """)
             # 启动手势控制线程
             self.gesture_thread = threading.Thread(target=self._run_gesture_control, daemon=True)
             self.is_gesture_active = True
@@ -983,7 +1183,7 @@ class PPTFloatingWindow(QWidget):
                 self.gesture_controller.ppt_controller.is_presentation_active = True
 
     def stop_gesture_control(self):
-        """停止手势控制"""
+        """停止手势控制（仅核心功能）"""
         if not GESTURE_AVAILABLE or not self.is_gesture_active:
             return
 
@@ -992,26 +1192,6 @@ class PPTFloatingWindow(QWidget):
             self.is_gesture_active = False
             if self.gesture_controller:
                 self.gesture_controller.running = False
-
-            # 更新按钮状态
-            self.btn_start.setText("开始")
-            self.btn_start.setStyleSheet("""
-                QPushButton {
-                    background: #165DFF;
-                    color: white;
-                    border-radius: 5px;
-                    font-weight: bold;
-                    padding: 0 8px;
-                    border: none;
-                    font-size: 11px;
-                }
-                QPushButton:hover {
-                    background: #466BB0;
-                }
-                QPushButton:pressed {
-                    background: #0F4FDD;
-                }
-            """)
 
             # 等待线程结束
             if self.gesture_thread and self.gesture_thread.is_alive():
