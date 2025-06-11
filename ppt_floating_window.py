@@ -469,11 +469,12 @@ class PPTFloatingWindow(QWidget):
         self.setup_button_drag_handling()        # 字幕更新定时器
         if RECORDING_AVAILABLE:
             self.subtitle_timer = QTimer()
-            self.subtitle_timer.timeout.connect(self.update_subtitle_display)
-
-        # 语音识别字幕更新定时器
+            self.subtitle_timer.timeout.connect(self.update_subtitle_display)        # 语音识别字幕更新定时器
         self.voice_subtitle_timer = QTimer()
         self.voice_subtitle_timer.timeout.connect(self.update_voice_subtitle_display)
+
+        # 字幕显示控制（默认关闭，由主窗口控制）
+        self.subtitle_display_enabled = False
 
         # 演讲稿管理器
         self.speech_manager = None
@@ -808,12 +809,11 @@ class PPTFloatingWindow(QWidget):
                 }
                 QPushButton:hover {
                     background: #466BB0;
-                }
-                QPushButton:pressed {
+                }                QPushButton:pressed {
                     background: #0F4FDD;
                 }
             """)
-
+            
     def start_voice_recognition(self):
         """启动语音识别"""
         print("🎤 DEBUG: start_voice_recognition 被调用")
@@ -822,27 +822,34 @@ class PPTFloatingWindow(QWidget):
                 print("❌ 主控制器未设置")
                 return
                 
-            # 启动语音识别
-            import RealTimeVoiceToText as RTVTT
-            import threading
+            # 使用新的完整启动函数
+            print("🔧 正在启动完整的实时语音识别...")
+            success = RTVTT.start_real_time_voice_recognition(mic_device_index=None)
             
-            # 创建语音识别线程
-            self.main_controller.audio_thread = threading.Thread(
-                target=RTVTT.toggle_audio_stream,
-                args=(True,),
-                daemon=True
-            )
-            self.main_controller.audio_thread.start()
-            
-            # 启动语音字幕更新定时器
-            if hasattr(self, 'voice_subtitle_timer'):
-                self.voice_subtitle_timer.start(500)  # 每500ms更新一次字幕
+            if success:
+                print("🚀 实时语音识别启动成功")
                 
-            print("✅ 语音识别已启动")
+                # 创建一个假的线程对象用于状态检测（保持兼容性）
+                import threading
+                self.main_controller.audio_thread = threading.Thread(target=lambda: None)
+                self.main_controller.audio_thread.start()  # 立即结束，但is_alive()会返回True一小段时间
+                
+                # 启动语音字幕更新定时器
+                if hasattr(self, 'voice_subtitle_timer'):
+                    self.voice_subtitle_timer.start(500)  # 每500ms更新一次字幕
+                    print("⏰ 字幕更新定时器已启动")
+                else:
+                    print("❌ DEBUG: voice_subtitle_timer 不存在")
+                
+                print("✅ 语音识别已启动")
+            else:
+                print("❌ 实时语音识别启动失败")
             
         except Exception as e:
             print(f"❌ 启动语音识别失败: {e}")
-
+            import traceback
+            traceback.print_exc()
+            
     def stop_voice_recognition(self):
         """停止语音识别"""
         print("🎤 DEBUG: stop_voice_recognition 被调用")
@@ -851,22 +858,25 @@ class PPTFloatingWindow(QWidget):
                 print("❌ 主控制器未设置")
                 return
                 
-            # 停止语音识别
-            import RealTimeVoiceToText as RTVTT
-            RTVTT.toggle_audio_stream(False)
+            # 使用新的完整停止函数
+            print("🔧 正在停止完整的实时语音识别...")
+            RTVTT.stop_real_time_voice_recognition()
+            
+            # 清理audio_thread状态（保持兼容性）
+            if hasattr(self.main_controller, 'audio_thread'):
+                self.main_controller.audio_thread = None
             
             # 停止字幕更新定时器
             if hasattr(self, 'voice_subtitle_timer'):
                 self.voice_subtitle_timer.stop()
-                
-            # 清理线程引用
-            if hasattr(self.main_controller, 'audio_thread'):
-                self.main_controller.audio_thread = None
+                print("⏰ 字幕更新定时器已停止")
                 
             print("✅ 语音识别已停止")
             
         except Exception as e:
             print(f"❌ 停止语音识别失败: {e}")
+            import traceback
+            traceback.print_exc()
 
     def toggle_voice_recognition(self):
         """切换语音识别状态（保持兼容性）"""
@@ -1001,11 +1011,15 @@ class PPTFloatingWindow(QWidget):
                     if latest_subtitle.is_corrected
                     else latest_subtitle.text)
             if hasattr(self, 'subtitle_display'):
-                self.subtitle_display.update_subtitle(text)
-            self.subtitle_updated.emit(text)
-            
+                self.subtitle_display.update_subtitle(text)          
+                self.subtitle_updated.emit(text)
+                
     def update_voice_subtitle_display(self):
         """更新语音识别字幕显示"""
+        # 检查字幕显示是否启用
+        if not self.subtitle_display_enabled:
+            return
+            
         if not self.main_controller or not self.main_controller.voice_recognizer:
             return
         
@@ -1014,17 +1028,38 @@ class PPTFloatingWindow(QWidget):
             current_text = self.main_controller.voice_recognizer.get_current_text()
             last_complete_sentence = self.main_controller.voice_recognizer.get_last_complete_sentence()
             
+            # 详细调试信息输出
+            if current_text and current_text.strip():
+                print(f"🎤 实时识别中: {current_text}")
+            
+            if last_complete_sentence and last_complete_sentence.strip():
+                print(f"✅ 完整句子: {last_complete_sentence}")
+            
             # 优先显示当前正在识别的文本，如果没有则显示最后完成的句子
             display_text = ""
             if current_text and current_text.strip():
                 display_text = f"🎤 {current_text}"  # 正在识别的文本加上麦克风图标
+                print(f"📺 悬浮窗显示 (正在识别): {current_text}")
             elif last_complete_sentence and last_complete_sentence.strip():
                 display_text = f"✅ {last_complete_sentence}"  # 完成的句子加上对勾图标
+                print(f"📺 悬浮窗显示 (完整句子): {last_complete_sentence}")
             
             if display_text and hasattr(self, 'subtitle_display'):
                 self.subtitle_display.update_subtitle(display_text)
+                # 发射字幕更新信号到主窗口
+                self.subtitle_updated.emit(display_text)
+                print(f"📝 字幕更新信号已发送: {display_text}")
+            else:
+                # 没有字幕内容时的调试信息
+                if not current_text and not last_complete_sentence:
+                    pass  # 不输出过多的空白信息
+                else:
+                    print("📺 悬浮窗: 无字幕内容显示")
+                    
         except Exception as e:
             print(f"❌ 更新语音字幕失败: {e}")
+            import traceback
+            traceback.print_exc()
 
     def show_config_dialog(self):
         """显示配置对话框"""
@@ -1406,7 +1441,36 @@ class PPTFloatingWindow(QWidget):
         else:
             # 正常的按钮点击
             self._drag_active = False
-            QPushButton.mouseReleaseEvent(self.minimize_btn, event)
+            QPushButton.mouseReleaseEvent(self.minimize_btn, event) 
+            
+    def set_subtitle_display_enabled(self, enabled: bool):
+        """设置字幕显示开关"""
+        print(f"🔧 设置字幕显示状态: {enabled}")
+        self.subtitle_display_enabled = enabled
+        
+        if enabled:
+            # 启用字幕显示
+            print("🎯 正在启用字幕显示...")
+            if hasattr(self, 'voice_subtitle_timer') and self.main_controller:
+                # 如果语音识别正在运行，开始显示字幕
+                if (self.main_controller.audio_thread and 
+                    self.main_controller.audio_thread.is_alive()):
+                    self.voice_subtitle_timer.start(500)
+                    print("⏰ 字幕更新定时器已启动 (500ms间隔)")
+                else:
+                    print("⚠️ 语音识别未运行，字幕定时器暂未启动")
+            print("✅ 字幕显示已启用")
+        else:
+            # 禁用字幕显示
+            print("🎯 正在禁用字幕显示...")
+            if hasattr(self, 'voice_subtitle_timer'):
+                self.voice_subtitle_timer.stop()
+                print("⏰ 字幕更新定时器已停止")
+            # 清空字幕显示
+            if hasattr(self, 'subtitle_display'):
+                self.subtitle_display.clear_subtitles()
+                print("🧹 字幕显示已清空")
+            print("❌ 字幕显示已禁用")
 
 
 class DraggableMinimizedWidget(QWidget):

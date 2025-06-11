@@ -95,6 +95,7 @@ class MainWindow(QMainWindow):
         self.start_btn.clicked.connect(self.toggle_presentation)
         self.gesture_checkbox.stateChanged.connect(self.toggle_gesture_detection)
         self.voice_checkbox.stateChanged.connect(self.toggle_voice_recognition)
+        self.subtitle_checkbox.stateChanged.connect(self.toggle_subtitle_display)
         self.interval_spin.valueChanged.connect(self.update_detection_interval)
 
         # 连接手势映射下拉框
@@ -184,11 +185,14 @@ class MainWindow(QMainWindow):
                     self.floating_window.subtitle_updated.connect(self.on_subtitle_updated)
 
                     # 传递主控制器引用到悬浮窗，用于检查手势识别状态
-                    self.floating_window.set_main_controller(self.controller)
-
-                    # 如果有演讲稿管理器，设置到悬浮窗
+                    self.floating_window.set_main_controller(self.controller)                    # 如果有演讲稿管理器，设置到悬浮窗
                     if hasattr(self.controller, 'speech_manager'):
                         self.floating_window.set_speech_manager(self.controller.speech_manager)
+
+                    # 同步当前字幕显示状态到悬浮窗
+                    if hasattr(self, 'subtitle_checkbox') and self.subtitle_checkbox.isChecked():
+                        print("🔄 同步字幕显示状态到悬浮窗")
+                        self.floating_window.set_subtitle_display_enabled(True)
 
                 self.floating_window.show()
         else:
@@ -258,11 +262,17 @@ class MainWindow(QMainWindow):
                     enabled = False
             else:
                 # 用户取消操作，保持禁用状态
-                enabled = False
-
-        # 更新控制器状态
+                enabled = False        # 更新控制器状态
         self.controller.toggle_voice_recognition(enabled, next_page_keywords)
         self.update_status(f"语音识别已{'开启' if enabled else '关闭'}")
+
+        # 控制字幕复选框的可用性
+        self.subtitle_checkbox.setEnabled(enabled)
+        if not enabled:
+            # 禁用语音识别时，也禁用字幕显示
+            self.subtitle_checkbox.blockSignals(True)
+            self.subtitle_checkbox.setChecked(False)
+            self.subtitle_checkbox.blockSignals(False)
 
         # 如果用户取消了操作，需要重置复选框状态
         if not enabled:
@@ -972,6 +982,13 @@ class MainWindow(QMainWindow):
         self.voice_checkbox.setStyleSheet("QCheckBox {}")
 
         voice_layout.addWidget(self.voice_checkbox, alignment=Qt.AlignLeft)
+        
+        # 字幕显示按钮
+        self.subtitle_checkbox = QCheckBox("显示AI字幕")
+        self.subtitle_checkbox.setStyleSheet("QCheckBox {}")
+        self.subtitle_checkbox.setEnabled(False)  # 默认禁用，需要先启用语音识别
+        
+        voice_layout.addWidget(self.subtitle_checkbox, alignment=Qt.AlignLeft)
         layout.addWidget(voice_group)
 
         # 添加弹性空间
@@ -1278,14 +1295,14 @@ class MainWindow(QMainWindow):
             # next_slide (下一页): swipe_right
             # prev_slide (上一页): swipe_left
             # exit (退出): dual_hand
-            if not any(v != "无" for v in default_settings.values()):
-                default_settings = {
-                    "上一页": "向左滑动",  # prev_slide enabled=true
-                    "下一页": "向右滑动",  # next_slide enabled=true
-                    "开始播放": "无",  # fullscreen enabled=false
-                    "结束播放": "双手手势",  # exit enabled=true, dual_hand
-                    "暂停": "无",  # pause enabled=false                "继续": "无"             # 没有对应的后端配置
-                }
+            # if not any(v != "无" for v in default_settings.values()):
+            default_settings = {
+                "上一页": "向左滑动",  # prev_slide enabled=true
+                "下一页": "向右滑动",  # next_slide enabled=true
+                "开始播放": "无",  # fullscreen enabled=false
+                "结束播放": "双手手势",  # exit enabled=true, dual_hand
+                "暂停": "无",  # pause enabled=false                "继续": "无"             # 没有对应的后端配置
+            }
 
             return default_settings
 
@@ -1300,3 +1317,29 @@ class MainWindow(QMainWindow):
                 "暂停": "无",  # pause enabled=false
                 "继续": "无"  # 没有对应的后端配置
             }
+
+    def toggle_subtitle_display(self, enabled: bool):
+        """切换字幕显示状态"""
+        print(f"🔧 DEBUG: toggle_subtitle_display 被调用, enabled={enabled}")
+        print(f"🔧 DEBUG: 语音识别状态: {self.voice_checkbox.isChecked()}")
+        print(f"🔧 DEBUG: 悬浮窗存在: {hasattr(self, 'floating_window') and self.floating_window is not None}")
+        
+        if enabled and not self.voice_checkbox.isChecked():
+            # 如果语音识别未开启，不允许开启字幕
+            self.subtitle_checkbox.blockSignals(True)
+            self.subtitle_checkbox.setChecked(False)
+            self.subtitle_checkbox.blockSignals(False)
+            self.update_status("请先启用语音识别才能显示字幕", is_error=True)
+            print("❌ DEBUG: 语音识别未开启，拒绝启用字幕")
+            return
+
+        # 通知悬浮窗更新字幕显示状态
+        if hasattr(self, 'floating_window') and self.floating_window is not None:
+            print(f"📡 DEBUG: 正在通知悬浮窗更新字幕状态: {enabled}")
+            self.floating_window.set_subtitle_display_enabled(enabled)
+        else:
+            print("⚠️ DEBUG: 悬浮窗不存在，无法设置字幕状态")
+
+        status_text = "字幕显示已开启" if enabled else "字幕显示已关闭"
+        self.update_status(status_text)
+        print(f"✅ DEBUG: 字幕显示状态更新完成: {status_text}")
