@@ -636,7 +636,6 @@ class PPTFloatingWindow(QWidget):
                 border-radius: 10px;
                 border: 1px solid #CCCCCC;
             }        """)
-        
     def toggle_start_functions(self):
         """统一控制函数：根据当前运行状态和主窗口复选框状态决定切换功能"""
         print("🔄 DEBUG: toggle_start_functions 被调用")
@@ -646,7 +645,7 @@ class PPTFloatingWindow(QWidget):
             return
         
         # 检查当前运行状态
-        voice_running = self.main_controller.audio_thread and self.main_controller.audio_thread.is_alive()
+        voice_running = RTVTT.is_voice_recognition_running()
         gesture_running = self.is_gesture_active
         
         print(f"🔍 DEBUG: 当前运行状态 - 语音识别: {voice_running}, 手势识别: {gesture_running}")
@@ -659,26 +658,34 @@ class PPTFloatingWindow(QWidget):
             if gesture_running:
                 self.stop_gesture_control()
             
-            # 重置按钮为默认状态
-            self.btn_start.setText("开始")
-            self.btn_start.setStyleSheet("""
-                QPushButton {
-                    background: #165DFF;
-                    color: white;
-                    border-radius: 5px;
-                    font-weight: bold;
-                    padding: 0 8px;
-                    border: none;
-                    font-size: 11px;
-                }
-                QPushButton:hover {
-                    background: #466BB0;
-                }
-                QPushButton:pressed {
-                    background: #0F4FDD;
-                }
-            """)
-            print("✅ 所有功能已停止")
+            # 停止功能后，重新检查状态并更新按钮
+            voice_still_running = RTVTT.is_voice_recognition_running()
+            gesture_still_running = self.is_gesture_active
+            
+            # 更新按钮状态
+            if not voice_still_running and not gesture_still_running:
+                # 如果没有功能在运行，恢复默认状态
+                self.btn_start.setText("开始")
+                self.btn_start.setStyleSheet("""
+                    QPushButton {
+                        background: #165DFF;
+                        color: white;
+                        border-radius: 5px;
+                        font-weight: bold;
+                        padding: 0 8px;
+                        border: none;
+                        font-size: 11px;
+                    }
+                    QPushButton:hover {
+                        background: #466BB0;
+                    }
+                    QPushButton:pressed {
+                        background: #0F4FDD;
+                    }
+                """)
+                print("✅ 所有功能已停止，按钮已恢复为开始状态")
+            else:
+                print(f"⚠️ 部分功能仍在运行 - 语音: {voice_still_running}, 手势: {gesture_still_running}")
             return
         
         # 如果没有功能运行，根据主窗口复选框状态启动相应功能
@@ -811,9 +818,8 @@ class PPTFloatingWindow(QWidget):
                     background: #466BB0;
                 }                QPushButton:pressed {
                     background: #0F4FDD;
-                }
-            """)
-            
+                }            """)
+
     def start_voice_recognition(self):
         """启动语音识别"""
         print("🎤 DEBUG: start_voice_recognition 被调用")
@@ -821,56 +827,41 @@ class PPTFloatingWindow(QWidget):
             if not self.main_controller:
                 print("❌ 主控制器未设置")
                 return
-                
-            # 使用新的完整启动函数
-            print("🔧 正在启动完整的实时语音识别...")
-            success = RTVTT.start_real_time_voice_recognition(mic_device_index=None)
             
-            if success:
-                print("🚀 实时语音识别启动成功")
-                
-                # 创建一个假的线程对象用于状态检测（保持兼容性）
-                import threading
-                self.main_controller.audio_thread = threading.Thread(target=lambda: None)
-                self.main_controller.audio_thread.start()  # 立即结束，但is_alive()会返回True一小段时间
-                
-                # 启动语音字幕更新定时器
-                if hasattr(self, 'voice_subtitle_timer'):
-                    self.voice_subtitle_timer.start(500)  # 每500ms更新一次字幕
-                    print("⏰ 字幕更新定时器已启动")
-                else:
-                    print("❌ DEBUG: voice_subtitle_timer 不存在")
-                
-                print("✅ 语音识别已启动")
+            # 通过主控制器启动语音识别，确保字幕功能正常
+            print("🔧 通过主控制器启动语音识别...")
+            self.main_controller.toggle_voice_recognition(True, [])
+            
+            # 启动语音字幕更新定时器
+            if hasattr(self, 'voice_subtitle_timer'):
+                self.voice_subtitle_timer.start(500)  # 每500ms更新一次字幕
+                print("⏰ 字幕更新定时器已启动")
             else:
-                print("❌ 实时语音识别启动失败")
+                print("❌ DEBUG: voice_subtitle_timer 不存在")
+            
+            print("✅ 语音识别已启动")
             
         except Exception as e:
             print(f"❌ 启动语音识别失败: {e}")
             import traceback
             traceback.print_exc()
-            
     def stop_voice_recognition(self):
         """停止语音识别"""
-        print("🎤 DEBUG: stop_voice_recognition 被调用")
+        print("🎤 DEBUG: stop_voice_recognition 被调用")      
         try:
             if not self.main_controller:
                 print("❌ 主控制器未设置")
                 return
-                
-            # 使用新的完整停止函数
-            print("🔧 正在停止完整的实时语音识别...")
-            RTVTT.stop_real_time_voice_recognition()
             
-            # 清理audio_thread状态（保持兼容性）
-            if hasattr(self.main_controller, 'audio_thread'):
-                self.main_controller.audio_thread = None
+            # 通过主控制器停止语音识别
+            print("🔧 通过主控制器停止语音识别...")
+            self.main_controller.toggle_voice_recognition(False, [])
             
             # 停止字幕更新定时器
             if hasattr(self, 'voice_subtitle_timer'):
                 self.voice_subtitle_timer.stop()
                 print("⏰ 字幕更新定时器已停止")
-                
+            
             print("✅ 语音识别已停止")
             
         except Exception as e:
@@ -880,14 +871,13 @@ class PPTFloatingWindow(QWidget):
 
     def toggle_voice_recognition(self):
         """切换语音识别状态（保持兼容性）"""
-        print("🎤 DEBUG: toggle_voice_recognition 被调用（兼容模式）")
-        # 启动语音识别
-        if self.main_controller.audio_thread is None or not self.main_controller.audio_thread.is_alive():
+        print("🎤 DEBUG: toggle_voice_recognition 被调用（兼容模式）")        # 检查语音识别是否在运行
+        if not RTVTT.is_voice_recognition_running():
             self.start_voice_recognition()
             # 更新按钮文本（仅在兼容模式下）
             print("语音识别开启✅")
         # 停止语音识别
-        elif self.main_controller.audio_thread and self.main_controller.audio_thread.is_alive():
+        else:
             self.stop_voice_recognition()
             # 更新按钮文本（仅在兼容模式下）
             print("语音识别停止❌")
@@ -1216,26 +1206,47 @@ class PPTFloatingWindow(QWidget):
             # 即使出错，也允许尝试控制
             if self.gesture_controller:
                 self.gesture_controller.ppt_controller.is_presentation_active = True
-
+                
     def stop_gesture_control(self):
         """停止手势控制（仅核心功能）"""
-        if not GESTURE_AVAILABLE or not self.is_gesture_active:
+        if not GESTURE_AVAILABLE:
+            print("❌ 手势控制功能不可用")
+            return
+            
+        if not self.is_gesture_active:
+            print("ℹ️ 手势控制未在运行")
             return
 
         try:
+            print("🛑 正在停止手势控制...")
+            
             # 停止手势控制
             self.is_gesture_active = False
             if self.gesture_controller:
                 self.gesture_controller.running = False
+                print("🔧 已设置手势控制器停止标志")
 
             # 等待线程结束
             if self.gesture_thread and self.gesture_thread.is_alive():
-                self.gesture_thread.join(timeout=1.0)
+                print("⏳ 等待手势控制线程结束...")
+                self.gesture_thread.join(timeout=2.0)  # 增加超时时间
+                if self.gesture_thread.is_alive():
+                    print("⚠️ 手势控制线程未能及时结束，但已标记为停止")
+                else:
+                    print("✅ 手势控制线程已结束")
 
-            print("🛑 手势控制已停止")
+            # 清理线程引用
+            self.gesture_thread = None
+            print("🧹 已清理手势控制线程引用")
+
+            print("🛑 手势控制已完全停止")
 
         except Exception as e:
             print(f"❌ 停止手势控制失败: {e}")
+            # 即使出错，也要确保状态正确
+            self.is_gesture_active = False
+            if self.gesture_controller:
+                self.gesture_controller.running = False
 
     def _run_gesture_control(self):
         """在后台线程中运行手势控制"""

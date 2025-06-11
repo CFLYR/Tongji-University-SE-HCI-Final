@@ -263,7 +263,6 @@ class MainWindow(QMainWindow):
             else:
                 # 用户取消操作，保持禁用状态
                 enabled = False        # 更新控制器状态
-        self.controller.toggle_voice_recognition(enabled, next_page_keywords)
         self.update_status(f"语音识别已{'开启' if enabled else '关闭'}")
 
         # 控制字幕复选框的可用性
