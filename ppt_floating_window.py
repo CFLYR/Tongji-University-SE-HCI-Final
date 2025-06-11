@@ -324,17 +324,24 @@ class SubtitleDisplayWidget(QWidget):
             }
         """)
         layout.addWidget(self.history_label)
-
     def update_subtitle(self, text: str):
         """更新字幕"""
-        if text and text != self.current_subtitle:
-            # 将当前字幕移到历史记录
-            if self.current_subtitle:
-                self.add_to_history(self.current_subtitle)
-
-            # 更新当前字幕
-            self.current_subtitle = text
-            self.current_label.setText(text)
+        if text and text.strip():
+            # 如果文本很短或者是临时文本（正在识别中），直接更新当前显示
+            if len(text.strip()) <= 2 or not text.endswith(('。', '！', '？', '.', '!', '?')):
+                # 临时文本，直接显示
+                self.current_label.setText(text)
+                self.current_subtitle = text
+            else:
+                # 完整句子，添加到历史记录
+                if text != self.current_subtitle:
+                    # 将当前字幕移到历史记录
+                    if self.current_subtitle:
+                        self.add_to_history(self.current_subtitle)
+                    
+                    # 更新当前字幕
+                    self.current_subtitle = text
+                    self.current_label.setText(text)
 
     def add_to_history(self, text: str):
         """添加到历史记录"""
@@ -459,12 +466,14 @@ class PPTFloatingWindow(QWidget):
         self.init_ui()
 
         # 设置按钮拖拽处理
-        self.setup_button_drag_handling()
-
-        # 字幕更新定时器
+        self.setup_button_drag_handling()        # 字幕更新定时器
         if RECORDING_AVAILABLE:
             self.subtitle_timer = QTimer()
             self.subtitle_timer.timeout.connect(self.update_subtitle_display)
+
+        # 语音识别字幕更新定时器
+        self.voice_subtitle_timer = QTimer()
+        self.voice_subtitle_timer.timeout.connect(self.update_voice_subtitle_display)
 
         # 演讲稿管理器
         self.speech_manager = None
@@ -520,8 +529,8 @@ class PPTFloatingWindow(QWidget):
 
         # PPT控制按钮区
         ppt_layout = QHBoxLayout()
-
-        self.btn_start = QPushButton("开始")
+        
+        self.btn_start = QPushButton("开始语音")
         self.btn_prev = QPushButton("上一页")
         self.btn_next = QPushButton("下一页")
 
@@ -543,14 +552,13 @@ class PPTFloatingWindow(QWidget):
                 QPushButton:pressed {
                     background: #0F4FDD;
                 }
-            """)
+            """)        
         ppt_layout.addWidget(self.btn_start)
         ppt_layout.addWidget(self.btn_prev)
         ppt_layout.addWidget(self.btn_next)
         main_layout.addLayout(ppt_layout)
         # 连接PPT控制按钮事件
-        self.btn_start.clicked.connect(self.toggle_gesture_control)
-        self.btn_start.clicked.connect(self.toggle_voice_recognition)  # 把开始语音识别接上
+        self.btn_start.clicked.connect(self.toggle_voice_recognition)  # 开始/停止语音识别
 
         # 连接上一页和下一页按钮
         self.btn_prev.clicked.connect(self.previous_slide)
@@ -612,16 +620,15 @@ class PPTFloatingWindow(QWidget):
                 padding: 6px;
                 border: 1px solid #E0E0E0;
             }
-        """)
+        """)        
         self.text_label.setAlignment(Qt.AlignTop | Qt.AlignLeft)
         self.text_label.setWordWrap(True)
         self.text_label.setMinimumHeight(50)
         main_layout.addWidget(self.text_label)
 
-        # AI字幕显示区（仅在录像功能可用时显示）
-        if RECORDING_AVAILABLE:
-            self.subtitle_display = SubtitleDisplayWidget()
-            main_layout.addWidget(self.subtitle_display)
+        # AI字幕显示区（语音识别字幕显示）
+        self.subtitle_display = SubtitleDisplayWidget()
+        main_layout.addWidget(self.subtitle_display)
 
         # 设置整体样式
         self.setStyleSheet("""
@@ -629,19 +636,31 @@ class PPTFloatingWindow(QWidget):
                 background: rgba(255, 255, 255, 0.95);
                 border-radius: 10px;
                 border: 1px solid #CCCCCC;
-            }
-        """)
-
+            }        """) 
     def toggle_voice_recognition(self):
         # 启动语音识别
         if self.main_controller.audio_thread is None or not self.main_controller.audio_thread.is_alive():
             self.main_controller.audio_thread = threading.Thread(target=RTVTT.start_audio_stream,
                                                                  args=(self.main_controller.voice_recognizer,))
             self.main_controller.audio_thread.start()
+            
+            # 启动语音字幕更新定时器
+            if hasattr(self, 'voice_subtitle_timer'):
+                self.voice_subtitle_timer.start(500)  # 每500ms更新一次字幕
+            
+            # 更新按钮文本
+            self.btn_start.setText("停止语音")
             print("语音识别开启✅")
         # 停止语音识别
         elif self.main_controller.audio_thread and self.main_controller.audio_thread.is_alive():
             RTVTT.toggle_audio_stream(False)
+            
+            # 停止语音字幕更新定时器
+            if hasattr(self, 'voice_subtitle_timer'):
+                self.voice_subtitle_timer.stop()
+            
+            # 更新按钮文本
+            self.btn_start.setText("开始语音")
             print("语音识别停止❌")
 
     def set_speech_manager(self, speech_manager):
@@ -748,8 +767,7 @@ class PPTFloatingWindow(QWidget):
                 self.recording_assistant.output_dir,
                 self.recording_assistant.current_session_id
             )
-            self.recording_stopped.emit(session_dir)
-
+            self.recording_stopped.emit(session_dir)     
         print("🎬 录制已停止")
 
     def update_subtitle_display(self):
@@ -766,6 +784,28 @@ class PPTFloatingWindow(QWidget):
             if hasattr(self, 'subtitle_display'):
                 self.subtitle_display.update_subtitle(text)
             self.subtitle_updated.emit(text)
+            
+    def update_voice_subtitle_display(self):
+        """更新语音识别字幕显示"""
+        if not self.main_controller or not self.main_controller.voice_recognizer:
+            return
+        
+        try:
+            # 获取实时语音文本
+            current_text = self.main_controller.voice_recognizer.get_current_text()
+            last_complete_sentence = self.main_controller.voice_recognizer.get_last_complete_sentence()
+            
+            # 优先显示当前正在识别的文本，如果没有则显示最后完成的句子
+            display_text = ""
+            if current_text and current_text.strip():
+                display_text = f"🎤 {current_text}"  # 正在识别的文本加上麦克风图标
+            elif last_complete_sentence and last_complete_sentence.strip():
+                display_text = f"✅ {last_complete_sentence}"  # 完成的句子加上对勾图标
+            
+            if display_text and hasattr(self, 'subtitle_display'):
+                self.subtitle_display.update_subtitle(display_text)
+        except Exception as e:
+            print(f"❌ 更新语音字幕失败: {e}")
 
     def show_config_dialog(self):
         """显示配置对话框"""
@@ -1022,7 +1062,7 @@ class PPTFloatingWindow(QWidget):
     def mouseReleaseEvent(self, event):
         """鼠标释放事件 - 结束拖拽"""
         self._drag_active = False
-
+        
     def closeEvent(self, event):
         """关闭事件"""
         # 如果正在录制，先停止录制
@@ -1032,6 +1072,14 @@ class PPTFloatingWindow(QWidget):
         # 如果手势控制正在运行，先停止手势控制
         if GESTURE_AVAILABLE and self.is_gesture_active:
             self.stop_gesture_control()
+
+        # 停止语音识别
+        if hasattr(self, 'voice_subtitle_timer'):
+            self.voice_subtitle_timer.stop()
+        
+        # 停止语音识别
+        if self.main_controller and self.main_controller.audio_thread and self.main_controller.audio_thread.is_alive():
+            RTVTT.toggle_audio_stream(False)
 
         # 清理字幕显示
         if hasattr(self, 'subtitle_display'):
