@@ -252,6 +252,7 @@ class MainController(QObject):
 
     def process_gesture(self, lmList):
         """处理检测到的手势"""
+        
         try:
             # 获取手指状态
             fingers = self.gesture_detector.fingersUp(lmList)
@@ -262,7 +263,6 @@ class MainController(QObject):
             elif sum(fingers) == 0:  # 所有手指都闭合
                 self.gesture_detected.emit("fist", 1.0)
             # 可以添加更多手势判断逻辑
-
         except Exception as e:
             self.error_occurred.emit(f"处理手势失败: {str(e)}")
 
@@ -282,11 +282,24 @@ class MainController(QObject):
         """切换语音识别状态"""
         try:
             if enabled:
-                # 启动实时语音识别
+                # 【关键修复】先设置关键词，再启动语音识别
                 print("🔧 DEBUG: 主控制器启动语音识别")
+                print(f"🔧 DEBUG: 准备设置关键词: {next_page_keywords}")
+                
+                # 重要：先设置关键词到语音识别器
+                RTVTT.set_voice_keywords(next_page_keywords, "上一页")
+                print("✅ 关键词已设置到语音识别器")
+                
+                # 然后启动实时语音识别
                 success = RTVTT.start_real_time_voice_recognition(mic_device_index=None)
                 if success:
-                    self.voice_recognizer.next_page_keywords = next_page_keywords
+                    # 确保关键词已经设置（双重保险）
+                    recognizer = RTVTT.get_RTVTT_recognizer()
+                    print(f"🔧 DEBUG: 验证识别器关键词设置:")
+                    print(f"   - 下一页关键词: {recognizer.next_page_keywords}")
+                    print(f"   - 上一页关键词: '{recognizer.prev_page_keyword}'")
+                    
+                    self.voice_recognizer = recognizer  # 保存引用
                     self.voice_recognition_started.emit()
                     print("✅ 主控制器：语音识别启动成功")
                 else:

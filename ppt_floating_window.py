@@ -66,35 +66,6 @@ class RecordingConfigDialog(QDialog):
         layout.setSpacing(15)
         layout.setContentsMargins(20, 20, 20, 20)
 
-        # 录制选项组
-        record_group = QGroupBox("录制选项")
-        record_layout = QFormLayout(record_group)
-
-        self.screen_checkbox = QCheckBox("录制屏幕")
-        self.camera_checkbox = QCheckBox("录制摄像头")
-        self.microphone_checkbox = QCheckBox("录制麦克风")
-
-        record_layout.addRow("屏幕录制:", self.screen_checkbox)
-        record_layout.addRow("摄像头录制:", self.camera_checkbox)
-        record_layout.addRow("麦克风录制:", self.microphone_checkbox)
-
-        layout.addWidget(record_group)
-
-        # AI字幕选项组
-        subtitle_group = QGroupBox("AI字幕选项")
-        subtitle_layout = QFormLayout(subtitle_group)
-        self.ai_subtitles_checkbox = QCheckBox("启用AI实时字幕")
-        self.script_correction_checkbox = QCheckBox("启用文稿修正")
-        self.overlay_subtitles_checkbox = QCheckBox("录制时显示字幕")
-        self.record_floating_window_checkbox = QCheckBox("录制悬浮窗内容")
-
-        subtitle_layout.addRow("AI字幕:", self.ai_subtitles_checkbox)
-        subtitle_layout.addRow("文稿修正:", self.script_correction_checkbox)
-        subtitle_layout.addRow("字幕叠加:", self.overlay_subtitles_checkbox)
-        subtitle_layout.addRow("悬浮窗录制:", self.record_floating_window_checkbox)
-
-        layout.addWidget(subtitle_group)
-
         # 视频参数组
         video_group = QGroupBox("视频参数")
         video_layout = QFormLayout(video_group)
@@ -131,19 +102,14 @@ class RecordingConfigDialog(QDialog):
         output_layout.addRow("输出目录:", output_dir_layout)
 
         layout.addWidget(output_group)
+        
         # 按钮组
         button_layout = QHBoxLayout()
-
-        # 测试按钮
-        test_btn = QPushButton("测试配置")
-        test_btn.clicked.connect(self.test_config)
-        button_layout.addWidget(test_btn)
 
         button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         button_box.accepted.connect(self.accept)
         button_box.rejected.connect(self.reject)
-        button_layout.addWidget(button_box)
-
+        button_layout.addWidget(button_box) 
         layout.addLayout(button_layout)
 
         # 设置样式
@@ -180,18 +146,11 @@ class RecordingConfigDialog(QDialog):
                 background-color: #165DFF;
             }
         """)
-
+        
     def load_config(self):
         """加载配置到UI"""
         if not RECORDING_AVAILABLE:
             return
-
-        self.screen_checkbox.setChecked(getattr(self.config, 'enable_screen', True))
-        self.camera_checkbox.setChecked(getattr(self.config, 'enable_camera', False))
-        self.microphone_checkbox.setChecked(getattr(self.config, 'enable_microphone', True))
-        self.ai_subtitles_checkbox.setChecked(getattr(self.config, 'enable_ai_subtitles', True))
-        self.script_correction_checkbox.setChecked(getattr(self.config, 'enable_script_correction', False))
-        self.record_floating_window_checkbox.setChecked(getattr(self.config, 'record_floating_window', False))
 
         self.fps_spinbox.setValue(getattr(self.config, 'video_fps', 30))
 
@@ -216,7 +175,7 @@ class RecordingConfigDialog(QDialog):
 
         output_dir = getattr(self.config, 'output_dir', 'recordings')
         self.output_dir_label.setText(output_dir)
-
+        
     def get_config(self):
         """从UI获取配置"""
         if not RECORDING_AVAILABLE:
@@ -224,13 +183,7 @@ class RecordingConfigDialog(QDialog):
 
         config = RecordingConfig()
 
-        config.enable_screen = self.screen_checkbox.isChecked()
-        config.enable_camera = self.camera_checkbox.isChecked()
-        config.enable_microphone = self.microphone_checkbox.isChecked()
-        config.enable_ai_subtitles = self.ai_subtitles_checkbox.isChecked()
-        config.enable_script_correction = self.script_correction_checkbox.isChecked()
-        config.record_floating_window = self.record_floating_window_checkbox.isChecked()
-
+        # 保持默认值，仅更新视频参数和输出设置
         config.video_fps = self.fps_spinbox.value()
 
         # 摄像头位置映射
@@ -244,35 +197,13 @@ class RecordingConfigDialog(QDialog):
         config.output_dir = self.output_dir_label.text()
 
         return config
-
+    
     def select_output_dir(self):
         """选择输出目录"""
         from PySide6.QtWidgets import QFileDialog
         dir_path = QFileDialog.getExistingDirectory(self, "选择录制输出目录")
         if dir_path:
             self.output_dir_label.setText(dir_path)
-
-    def test_config(self):
-        """测试当前配置"""
-        config = self.get_config()
-        if config:
-            print("🔍 当前录制配置测试:")
-            print(f"  - 录制屏幕: {config.enable_screen}")
-            print(f"  - 录制摄像头: {config.enable_camera}")
-            print(f"  - 录制麦克风: {config.enable_microphone}")
-            print(f"  - AI字幕: {config.enable_ai_subtitles}")
-            print(f"  - 文稿修正: {config.enable_script_correction}")
-            print(f"  - 录制悬浮窗: {config.record_floating_window}")
-            print(f"  - 视频帧率: {config.video_fps}")
-            print(f"  - 摄像头位置: {config.camera_position}")
-            print(f"  - 摄像头大小: {config.camera_size}")
-            print(f"  - 输出目录: {config.output_dir}")
-
-            # 特别强调悬浮窗录制选项
-            if config.record_floating_window:
-                print("✅ 悬浮窗将被录制到视频中")
-            else:
-                print("🚫 悬浮窗将被遮盖（模糊处理）")
 
 
 class SubtitleDisplayWidget(QWidget):
@@ -866,13 +797,13 @@ class PPTFloatingWindow(QWidget):
                     background: #466BB0;
                 }                QPushButton:pressed {
                     background: #0F4FDD;                }            """)  
-            
     def start_voice_recognition(self):
         """启动语音识别"""
         print("🎤 DEBUG: start_voice_recognition 被调用")
         
         # 检查语音识别功能是否被主窗口启用
         if not getattr(self, 'voice_recognition_enabled', False):
+            
             print("❌ 语音识别功能未在主窗口启用")
             return
         
@@ -889,6 +820,11 @@ class PPTFloatingWindow(QWidget):
             # 使用传递过来的关键词启动语音识别
             keywords = getattr(self, 'voice_keywords', ["下一页"])
             print(f"🔧 使用关键词启动语音识别: {keywords}")
+            
+            # 【关键修复】直接设置关键词到语音识别器，然后启动
+            import RealTimeVoiceToText as RTVTT
+            RTVTT.set_voice_keywords(keywords, "上一页")
+            print("✅ 关键词已直接设置到语音识别器")
             
             # 通过主控制器启动语音识别，传递关键词
             self.main_controller.toggle_voice_recognition(True, keywords)

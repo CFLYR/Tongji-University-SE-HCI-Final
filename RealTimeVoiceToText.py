@@ -140,8 +140,8 @@ class RealTimeSpeechRecognizer:
                     get_ppt_controller().jump_to_slide(page_num)
                 except ValueError:
                     # print(f"提取的页码无效: {page_num}")
-                    pass
-
+                    pass   
+                
     def on_sentence_end(self, message, *args):
         # 解析JSON消息
         try:
@@ -149,20 +149,73 @@ class RealTimeSpeechRecognizer:
             result = data.get('payload', {}).get('result', '')
             self.current_text = ""
             self.last_complete_sentence = result  # 一句完整的不中断的话
+            
+            print(f"\n🔧 DEBUG: on_sentence_end 收到完整句子: '{result}'")
+            print(f"🔧 DEBUG: 当前下一页关键词: {self.next_page_keywords}")
+            print(f"🔧 DEBUG: 当前上一页关键词: '{self.prev_page_keyword}'")
+            
             # 当一段连续不中断的话结束 阿里云的sdk会自动调用该函数 在这里调用PPT换页的逻辑
-            with page_lock:
-                next_page_keyword = [kw for kw in self.next_page_keywords if kw in result]
-                if next_page_keyword:
-                    get_ppt_controller().next_slide()
+            with page_lock:                # 检查下一页关键词
+                matched_next_keywords = [kw for kw in self.next_page_keywords if kw in result]
+                print(f"🔧 DEBUG: 匹配到的下一页关键词: {matched_next_keywords}")
+                if matched_next_keywords:
+                    print(f"✅ 关键词匹配成功! 执行下一页操作，匹配的关键词: {matched_next_keywords}")
+                    
+                    # 直接发送按键，同时激活PPT窗口
+                    try:
+                        import pyautogui as pt
+                        import time
+                        
+                        # 激活PPT窗口的简单方法：先切换窗口，再发送按键
+                        pt.FAILSAFE = False
+                        pt.PAUSE = 0.1
+                        
+                        # 使用Alt+Tab切换到PPT窗口
+                        pt.hotkey('alt', 'tab')
+                        time.sleep(0.2)  # 等待窗口切换
+                        
+                        # 发送右箭头键（下一页）
+                        pt.press('right')
+                        print("✅ 语音控制：成功激活PPT窗口并发送按键 right 箭头（下一页）")
+                    except Exception as e:
+                        print(f"❌ 语音控制：发送按键失败: {e}")
+                        # 备用方案：尝试使用PPT控制器
+                        try:
+                            get_ppt_controller().next_slide()
+                        except Exception as e2:
+                            print(f"❌ 备用方案也失败: {e2}")
+                    
+                    print(f"📄 已执行下一页操作")
+                                
                 elif self.prev_page_keyword in result:
-                    get_ppt_controller().previous_slide()
-                # else:
-                #     self.detect_page_jump_command(result)
+                    print(f"✅ 上一页关键词匹配成功! 执行上一页操作，匹配的关键词: '{self.prev_page_keyword}'")
+                    
+                    # 直接发送按键，不依赖PPT控制器状态
+                    try:
+                        import pyautogui as pt
+                        pt.FAILSAFE = False
+                        pt.PAUSE = 0.1
+                        pt.press('left')  # 发送左箭头键（上一页）
+                        print("✅ 语音控制：成功发送按键 left 箭头（上一页）")
+                    except Exception as e:
+                        print(f"❌ 语音控制：发送按键失败: {e}")
+                        # 备用方案：尝试使用PPT控制器
+                        try:
+                            get_ppt_controller().previous_slide()
+                        except Exception as e2:
+                            print(f"❌ 备用方案也失败: {e2}")
+                    
+                    print(f"📄 已执行上一页操作")
+                else:
+                    print(f"❌ 未匹配到任何翻页关键词")
+                    print(f"🔍 DEBUG: 检查是否包含跳转页面指令...")
+                    self.detect_page_jump_command(result)
+                    
             with output_lock:
                 print(f"\n[完整句子] {result}")
         except json.JSONDecodeError:
-            # print(f"解析错误: {message}")
-            pass   
+            print(f"❌ JSON解析失败: {message}")
+            pass
         
     def on_start(self, message, *args):
         print(f"🔧 DEBUG: on_start 被调用: {message}")
@@ -444,6 +497,34 @@ def stop_real_time_voice_recognition():
         print("✅ 语音识别器已重置")
     
     print("✅ 实时语音识别已完全停止")
+
+def set_voice_keywords(next_page_keywords: list, prev_page_keyword: str = "上一页"):
+    """设置语音识别的关键词"""
+    global _RTVTT_recognizer
+    
+    print(f"🔧 DEBUG: set_voice_keywords 被调用")
+    print(f"🔧 DEBUG: 设置下一页关键词: {next_page_keywords}")
+    print(f"🔧 DEBUG: 设置上一页关键词: {prev_page_keyword}")
+    
+    # 获取或创建识别器
+    recognizer = get_RTVTT_recognizer()
+    
+    # 设置关键词
+    recognizer.next_page_keywords = next_page_keywords.copy() if next_page_keywords else []
+    recognizer.prev_page_keyword = prev_page_keyword
+    
+    print(f"✅ 关键词设置完成:")
+    print(f"   - 下一页关键词: {recognizer.next_page_keywords}")
+    print(f"   - 上一页关键词: '{recognizer.prev_page_keyword}'")
+
+def get_voice_keywords():
+    """获取当前设置的语音关键词"""
+    global _RTVTT_recognizer
+    
+    if _RTVTT_recognizer is None:
+        return [], "上一页"
+    
+    return _RTVTT_recognizer.next_page_keywords.copy(), _RTVTT_recognizer.prev_page_keyword
 
 if __name__ == "__main__":
     # 默认麦克风
