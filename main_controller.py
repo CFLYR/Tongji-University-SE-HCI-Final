@@ -8,6 +8,7 @@ from unified_ppt_gesture_controller import UnifiedPPTGestureController
 import RealTimeVoiceToText as RTVTT
 import threading
 import speech_text_manager
+from PySide6.QtCore import QObject, Signal
 
 
 class MainController(QObject):
@@ -41,6 +42,9 @@ class MainController(QObject):
         self.last_fps_update = 0
         self.current_fps = 0
 
+        # 主窗口引用
+        self.main_window = None
+
         # 手势配置
         self.gesture_configs = {
             "next_slide": {"gesture_type": "swipe_right", "enabled": True},
@@ -59,7 +63,10 @@ class MainController(QObject):
         # 初始化演讲稿管理器
         self.speech_manager = speech_text_manager.SpeechTextManager()
 
-
+    def set_main_window(self, main_window):
+        """设置主窗口引用"""
+        self.main_window = main_window
+        print("✅ 主控制器已设置主窗口引用")
 
     def start_system(self) -> bool:
         """启动系统"""
@@ -245,6 +252,7 @@ class MainController(QObject):
 
     def process_gesture(self, lmList):
         """处理检测到的手势"""
+        
         try:
             # 获取手指状态
             fingers = self.gesture_detector.fingersUp(lmList)
@@ -255,7 +263,6 @@ class MainController(QObject):
             elif sum(fingers) == 0:  # 所有手指都闭合
                 self.gesture_detected.emit("fist", 1.0)
             # 可以添加更多手势判断逻辑
-
         except Exception as e:
             self.error_occurred.emit(f"处理手势失败: {str(e)}")
 
@@ -267,22 +274,48 @@ class MainController(QObject):
             if enabled:
                 self.gesture_detection_started.emit()
             else:
-                self.gesture_detection_stopped.emit()
+                self.gesture_detection_stopped.emit() 
         except Exception as e:
             self.error_occurred.emit(f"切换手势检测失败: {str(e)}")
 
     def toggle_voice_recognition(self, enabled: bool, next_page_keywords: list):
         """切换语音识别状态"""
         try:
-            # 使用后端的toggle_audio_stream函数改变RUNNING的值 控制语音识别的开启和关闭
-            RTVTT.toggle_audio_stream(enabled)
             if enabled:
-                self.voice_recognizer.next_page_keywords = next_page_keywords
-                self.voice_recognition_started.emit()
+                # 【关键修复】先设置关键词，再启动语音识别
+                print("🔧 DEBUG: 主控制器启动语音识别")
+                print(f"🔧 DEBUG: 准备设置关键词: {next_page_keywords}")
+                
+                # 重要：先设置关键词到语音识别器
+                RTVTT.set_voice_keywords(next_page_keywords, "上一页")
+                print("✅ 关键词已设置到语音识别器")
+                
+                # 然后启动实时语音识别
+                success = RTVTT.start_real_time_voice_recognition(mic_device_index=None)
+                if success:
+                    # 确保关键词已经设置（双重保险）
+                    recognizer = RTVTT.get_RTVTT_recognizer()
+                    print(f"🔧 DEBUG: 验证识别器关键词设置:")
+                    print(f"   - 下一页关键词: {recognizer.next_page_keywords}")
+                    print(f"   - 上一页关键词: '{recognizer.prev_page_keyword}'")
+                    
+                    self.voice_recognizer = recognizer  # 保存引用
+                    self.voice_recognition_started.emit()
+                    print("✅ 主控制器：语音识别启动成功")
+                else:
+                    print("❌ 主控制器：语音识别启动失败")
+                    self.error_occurred.emit("语音识别启动失败")
             else:
+                # 停止实时语音识别
+                print("🔧 DEBUG: 主控制器停止语音识别")
+                RTVTT.stop_real_time_voice_recognition()
                 self.voice_recognition_stopped.emit()
+                print("✅ 主控制器：语音识别停止成功")
         except Exception as e:
             self.error_occurred.emit(f"切换语音识别状态失败: {str(e)}")
+            print(f"❌ 主控制器切换语音识别状态失败: {e}")
+            import traceback
+            traceback.print_exc()
 
     def update_gesture_mapping(self, gesture: str, action: str):
         """更新手势映射 - 已移至主窗口处理"""

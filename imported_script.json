@@ -1,0 +1,241 @@
+{
+  "title": "导入的演讲文稿",
+  "import_time": "2025-06-12 02:13:14",
+  "total_lines": 39,
+  "lines": [
+    {
+      "line_number": 1,
+      "text": "尊敬的老师、亲爱的同学们，大家好！",
+      "is_added_to_keywords": false,
+      "character_count": 17
+    },
+    {
+      "line_number": 2,
+      "text": "今天我要为大家演示的是我们的人机交互课程项目。",
+      "is_added_to_keywords": false,
+      "character_count": 23
+    },
+    {
+      "line_number": 3,
+      "text": "这个项目主要解决演讲过程中的手势控制和语音控制问题。",
+      "is_added_to_keywords": false,
+      "character_count": 26
+    },
+    {
+      "line_number": 4,
+      "text": "首先，让我们来看看项目的背景和意义。",
+      "is_added_to_keywords": false,
+      "character_count": 18
+    },
+    {
+      "line_number": 5,
+      "text": "在传统的PPT演示中，演讲者需要频繁地操作鼠标或键盘。",
+      "is_added_to_keywords": true,
+      "character_count": 27
+    },
+    {
+      "line_number": 6,
+      "text": "这往往会打断演讲的流畅性，影响与观众的互动。",
+      "is_added_to_keywords": false,
+      "character_count": 22
+    },
+    {
+      "line_number": 7,
+      "text": "我们的项目通过手势识别技术，实现了无接触的PPT控制。",
+      "is_added_to_keywords": false,
+      "character_count": 27
+    },
+    {
+      "line_number": 8,
+      "text": "同时，我们还集成了语音识别功能，提供多模态的交互方式。",
+      "is_added_to_keywords": false,
+      "character_count": 27
+    },
+    {
+      "line_number": 9,
+      "text": "现在让我展示一下手势控制的功能。",
+      "is_added_to_keywords": false,
+      "character_count": 16
+    },
+    {
+      "line_number": 10,
+      "text": "通过向右滑动手势，我们可以切换到下一页。",
+      "is_added_to_keywords": false,
+      "character_count": 20
+    },
+    {
+      "line_number": 11,
+      "text": "向左滑动手势则可以返回到上一页。",
+      "is_added_to_keywords": false,
+      "character_count": 16
+    },
+    {
+      "line_number": 12,
+      "text": "除了基本的翻页功能，我们还支持握拳手势来退出演示。",
+      "is_added_to_keywords": false,
+      "character_count": 25
+    },
+    {
+      "line_number": 13,
+      "text": "语音控制方面，我们支持自定义关键词设置。",
+      "is_added_to_keywords": false,
+      "character_count": 20
+    },
+    {
+      "line_number": 14,
+      "text": "用户可以设置自己习惯的语音指令，比如\"下一页\"、\"上一张\"等。",
+      "is_added_to_keywords": false,
+      "character_count": 31
+    },
+    {
+      "line_number": 15,
+      "text": "我们的系统还具有实时字幕显示功能。",
+      "is_added_to_keywords": false,
+      "character_count": 17
+    },
+    {
+      "line_number": 16,
+      "text": "这对于听力有障碍的观众来说是非常有用的。",
+      "is_added_to_keywords": false,
+      "character_count": 20
+    },
+    {
+      "line_number": 17,
+      "text": "技术实现方面，我们使用了OpenCV进行手势识别。",
+      "is_added_to_keywords": false,
+      "character_count": 25
+    },
+    {
+      "line_number": 18,
+      "text": "语音识别则基于阿里云的语音服务API。",
+      "is_added_to_keywords": false,
+      "character_count": 19
+    },
+    {
+      "line_number": 19,
+      "text": "用户界面采用PySide6框架开发，保证了良好的用户体验。",
+      "is_added_to_keywords": false,
+      "character_count": 29
+    },
+    {
+      "line_number": 20,
+      "text": "系统的架构设计遵循了模块化的原则。",
+      "is_added_to_keywords": false,
+      "character_count": 17
+    },
+    {
+      "line_number": 21,
+      "text": "手势识别模块、语音识别模块和PPT控制模块相互独立。",
+      "is_added_to_keywords": false,
+      "character_count": 26
+    },
+    {
+      "line_number": 22,
+      "text": "这样的设计便于系统的维护和功能扩展。",
+      "is_added_to_keywords": false,
+      "character_count": 18
+    },
+    {
+      "line_number": 23,
+      "text": "在性能优化方面，我们对识别算法进行了深度优化。",
+      "is_added_to_keywords": false,
+      "character_count": 23
+    },
+    {
+      "line_number": 24,
+      "text": "手势识别的响应时间控制在200毫秒以内。",
+      "is_added_to_keywords": false,
+      "character_count": 20
+    },
+    {
+      "line_number": 25,
+      "text": "语音识别的准确率达到了95%以上。",
+      "is_added_to_keywords": false,
+      "character_count": 17
+    },
+    {
+      "line_number": 26,
+      "text": "用户测试结果显示，我们的系统显著提升了演讲的互动性。",
+      "is_added_to_keywords": false,
+      "character_count": 26
+    },
+    {
+      "line_number": 27,
+      "text": "86%的用户认为手势控制比传统方式更加自然。",
+      "is_added_to_keywords": false,
+      "character_count": 22
+    },
+    {
+      "line_number": 28,
+      "text": "92%的用户对语音控制功能表示满意。",
+      "is_added_to_keywords": false,
+      "character_count": 18
+    },
+    {
+      "line_number": 29,
+      "text": "当然，我们的系统还有一些需要改进的地方。",
+      "is_added_to_keywords": false,
+      "character_count": 20
+    },
+    {
+      "line_number": 30,
+      "text": "比如在复杂光线环境下的手势识别准确率有待提升。",
+      "is_added_to_keywords": false,
+      "character_count": 23
+    },
+    {
+      "line_number": 31,
+      "text": "语音识别在嘈杂环境中的表现也需要进一步优化。",
+      "is_added_to_keywords": false,
+      "character_count": 22
+    },
+    {
+      "line_number": 32,
+      "text": "未来我们计划增加更多的手势类型。",
+      "is_added_to_keywords": false,
+      "character_count": 16
+    },
+    {
+      "line_number": 33,
+      "text": "也会考虑集成更先进的AI算法来提升识别精度。",
+      "is_added_to_keywords": false,
+      "character_count": 22
+    },
+    {
+      "line_number": 34,
+      "text": "我们还希望能够支持多人协作的演示场景。",
+      "is_added_to_keywords": false,
+      "character_count": 19
+    },
+    {
+      "line_number": 35,
+      "text": "总结一下，我们的项目实现了智能化的PPT控制系统。",
+      "is_added_to_keywords": false,
+      "character_count": 25
+    },
+    {
+      "line_number": 36,
+      "text": "它不仅提升了演讲的效率，也增强了互动体验。",
+      "is_added_to_keywords": false,
+      "character_count": 21
+    },
+    {
+      "line_number": 37,
+      "text": "感谢大家的聆听，现在我很乐意回答大家的问题。",
+      "is_added_to_keywords": false,
+      "character_count": 22
+    },
+    {
+      "line_number": 38,
+      "text": "如果大家对技术细节感兴趣，欢迎会后进一步交流。",
+      "is_added_to_keywords": false,
+      "character_count": 23
+    },
+    {
+      "line_number": 39,
+      "text": "再次感谢老师和同学们的关注，谢谢大家！",
+      "is_added_to_keywords": false,
+      "character_count": 19
+    }
+  ]
+}
