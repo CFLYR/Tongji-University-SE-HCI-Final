@@ -186,7 +186,7 @@ class MainWindow(QMainWindow):
         self.file_path_label.hide()
         self.open_ppt_btn.hide()
 
-        self.update_status("", True)
+        self.update_status("PPT预览加载完成", False)
         pixmap = QPixmap(img_path)
         self.slide_image_label.setPixmap(pixmap)
         # 显示文件名
@@ -194,6 +194,10 @@ class MainWindow(QMainWindow):
         ppt_filename = os.path.basename(ppt_path)
         self.slide_filename_label.setText(f"PPT文件名：{ppt_filename}")
         self.slide_filename_label.show()
+        
+        # 恢复按钮状态（虽然按钮已隐藏，但为了保持状态一致性）
+        self.open_ppt_btn.setText("   打开PPT文件")
+        self.open_ppt_btn.setEnabled(True)
 
     def select_ppt_file(self):
         """选择PPT文件"""
@@ -204,16 +208,37 @@ class MainWindow(QMainWindow):
             "PowerPoint Files (*.ppt *.pptx);;All Files (*.*)"
         )
         if file_path:
-            self.update_status(f"已打开PPT文件: {file_path}")
+            # 更新按钮文本为加载中状态
+            self.open_ppt_btn.setText("   正在加载中...")
+            self.open_ppt_btn.setEnabled(False)
+            
+            # 强制刷新UI
+            from PySide6.QtWidgets import QApplication
+            QApplication.processEvents()
+            
+            self.update_status("正在加载PPT预览...")
             self.file_path_label.setText(file_path)
             self.controller.ppt_controller.current_ppt_path = file_path
     
+            # 使用QTimer延迟执行，确保UI更新
+            QTimer.singleShot(100, lambda: self._load_ppt_preview(file_path))
+    
+    def _load_ppt_preview(self, file_path):
+        """在后台加载PPT预览"""
+        try:
             img_path = self.export_first_slide_as_image(file_path)
             self.show_ppt_first_slide_preview(img_path)
             
             # 启用AI优化建议按钮
             self.ai_chat_btn.setEnabled(True)
             print(f"✅ AI优化建议按钮已启用，PPT路径: {file_path}")
+            
+        except Exception as e:
+            # 如果加载失败，恢复按钮状态
+            self.open_ppt_btn.setText("   打开PPT文件")
+            self.open_ppt_btn.setEnabled(True)
+            self.open_ppt_btn.show()  # 确保按钮重新显示
+            self.handle_error(f"加载PPT预览失败: {str(e)}")
             
     def toggle_max_restore(self):
         if self.isMaximized():
