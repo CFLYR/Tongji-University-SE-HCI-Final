@@ -214,18 +214,19 @@ class SubtitleDisplayWidget(QWidget):
         self.current_subtitle = ""
         self.subtitle_history = []
         self.max_history = 5
-        self.setFixedHeight(80)
+        self.setFixedHeight(78)  # 调整总高度以匹配内部组件
         self.init_ui()
 
     def init_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(4, 4, 4, 4)
-        layout.setSpacing(4)
+        layout.setSpacing(2)  # 减少内部间距
 
         # 当前字幕显示
         self.current_label = QLabel("无字幕")
         self.current_label.setAlignment(Qt.AlignCenter)
         self.current_label.setWordWrap(True)
+        self.current_label.setFixedHeight(40)  # 设置固定高度
         self.current_label.setStyleSheet("""
             QLabel {
                 background: rgba(22, 93, 255, 0.1);
@@ -243,7 +244,7 @@ class SubtitleDisplayWidget(QWidget):
         self.history_label = QLabel("")
         self.history_label.setAlignment(Qt.AlignLeft | Qt.AlignTop)
         self.history_label.setWordWrap(True)
-        self.history_label.setFixedHeight(35)
+        self.history_label.setFixedHeight(30)  # 减少高度
         self.history_label.setStyleSheet("""
             QLabel {
                 background: #f8f8f8;
@@ -288,7 +289,7 @@ class SubtitleDisplayWidget(QWidget):
         """清除所有字幕"""
         self.current_subtitle = ""
         self.subtitle_history = []
-        self.current_label.setText("等待AI字幕...")
+        self.current_label.setText("无字幕")
         self.history_label.setText("")
 
 
@@ -404,7 +405,7 @@ class PPTFloatingWindow(QWidget):
         # 窗口属性
         self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint | Qt.Tool)
         self.setAttribute(Qt.WA_TranslucentBackground, True)
-        self.setFixedSize(340, 260)
+        self.setFixedSize(340, 300)  # 进一步增加高度以确保组件不重叠
         
         # 设置初始位置到屏幕右下方
         self._set_initial_position()
@@ -460,11 +461,16 @@ class PPTFloatingWindow(QWidget):
         # 主窗口状态检查定时器 - 用于检测复选框状态变化
         self.checkbox_state_timer = QTimer()
         self.checkbox_state_timer.timeout.connect(self.check_main_window_checkbox_state)
-        self.checkbox_state_timer.start(2000)  # 每2秒检查一次
         
         # 记录上次的复选框状态，避免重复更新
         self.last_voice_enabled = False
         self.last_gesture_enabled = False
+        
+        # 标记是否已经点击过开始按钮（用于控制自动状态更新）
+        self.has_started_once = False
+        
+        # 延迟启动定时器，确保UI完全初始化
+        QTimer.singleShot(2000, self.start_state_monitoring)
 
     def _set_initial_position(self):
         """设置窗口初始位置到屏幕右下方"""
@@ -484,7 +490,7 @@ class PPTFloatingWindow(QWidget):
         """初始化UI"""
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(12, 12, 12, 12)
-        main_layout.setSpacing(8)
+        main_layout.setSpacing(12)  # 增加组件间距
 
         # 顶部标题栏
         title_layout = QHBoxLayout()
@@ -656,35 +662,116 @@ class PPTFloatingWindow(QWidget):
             record_layout.addWidget(self.btn_config)
             main_layout.addLayout(record_layout)
 
-        # 文稿展示区
+        # 文稿展示区（带滚动功能）
+        self.script_scroll_area = QScrollArea()
+        self.script_scroll_area.setFixedHeight(120)  # 增加高度以显示更多行文稿
+        self.script_scroll_area.setWidgetResizable(True)
+        self.script_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.script_scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        
+        # 文稿内容标签
         self.text_label = QLabel("文稿展示区")
         self.text_label.setStyleSheet("""
             QLabel {
                 font-size: 11px;
                 color: #222;
-                background: #F5F5F5;
+                background: transparent;
                 border-radius: 5px;
-                padding: 6px;
-                border: 1px solid #E0E0E0;
+                padding: 8px;
+                border: none;
             }
         """)        
         self.text_label.setAlignment(Qt.AlignTop | Qt.AlignLeft)
         self.text_label.setWordWrap(True)
-        self.text_label.setMinimumHeight(50)
-        main_layout.addWidget(self.text_label)
+        # 初始设置合适的高度，避免与下方组件重叠
+        self.text_label.setFixedHeight(100)
+        
+        # 设置滚动区域样式
+        self.script_scroll_area.setStyleSheet("""
+            QScrollArea {
+                background: #F5F5F5;
+                border: 1px solid #E0E0E0;
+                border-radius: 5px;
+            }
+            QScrollBar:vertical {
+                background: #F0F0F0;
+                width: 12px;
+                border-radius: 6px;
+                margin: 0px;
+            }
+            QScrollBar::handle:vertical {
+                background: #C0C0C0;
+                border-radius: 6px;
+                min-height: 30px;
+                margin: 2px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #A0A0A0;
+            }
+            QScrollBar::handle:vertical:pressed {
+                background: #808080;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                border: none;
+                background: none;
+                height: 0px;
+            }
+            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+                background: none;
+            }
+        """)
+        
+        # 将文稿标签放入滚动区域
+        self.script_scroll_area.setWidget(self.text_label)
+        main_layout.addWidget(self.script_scroll_area)
+        
+        # 添加分隔间距，确保滚动区域和字幕区域不重叠
+        main_layout.addSpacing(8)
 
         # AI字幕显示区（语音识别字幕显示）
         self.subtitle_display = SubtitleDisplayWidget()
-        main_layout.addWidget(self.subtitle_display)        # 设置整体样式
+        main_layout.addWidget(self.subtitle_display)
+        
+        # 设置整体样式
         self.setStyleSheet("""
             PPTFloatingWindow {
                 background: rgba(255, 255, 255, 0.95);
                 border-radius: 10px;
                 border: 1px solid #CCCCCC;
-            }        """)
+            }
+        """)
+        
+        # 立即修复初始布局，确保组件不重叠
+        self._fix_initial_layout()
+        
+        # 强制更新布局
+        self.updateGeometry()
+        self.update()
+    
+    def _fix_initial_layout(self):
+        """修复初始布局，确保组件不重叠"""
+        try:
+            # 确保文稿标签有正确的初始高度
+            self.text_label.setFixedHeight(100)
+            
+            # 确保滚动区域有正确的高度
+            self.script_scroll_area.setFixedHeight(120)
+            
+            # 确保字幕显示区域有正确的高度和初始文本
+            self.subtitle_display.setFixedHeight(78)
+            self.subtitle_display.current_label.setText("无字幕")
+            
+            print("✅ 初始布局已修复")
+            
+        except Exception as e:
+            print(f"⚠️ 修复初始布局时出错: {e}")
+    
     def toggle_start_functions(self):
         """统一控制函数：根据当前运行状态和主窗口复选框状态决定切换功能"""
         print("🔄 DEBUG: toggle_start_functions 被调用")
+        
+        # 标记用户已经点击过开始按钮
+        self.has_started_once = True
         
         if not self.main_controller:
             print("❌ 主控制器未设置，无法检查复选框状态")
@@ -965,11 +1052,78 @@ class PPTFloatingWindow(QWidget):
             print(f"更新悬浮窗幻灯片信息失败: {e}")
 
     def set_script_text(self, text: str):
-        """设置文稿文本"""
+        """设置文稿文本（支持滚动显示）"""
         self.text_label.setText(text)
+        
+        # 根据文本内容调整标签高度，确保能触发滚动
+        line_count = text.count('\n') + 1
+        # 每行约18像素高度，加上边距
+        estimated_height = max(100, line_count * 18 + 40)
+        
+        # 设置标签的固定高度而不是最小高度，确保滚动正常工作
+        self.text_label.setFixedHeight(estimated_height)
+        
+        # 强制更新滚动区域
+        if hasattr(self, 'script_scroll_area'):
+            self.script_scroll_area.updateGeometry()
+        
+        # 滚动到顶部
+        if hasattr(self, 'script_scroll_area'):
+            self.script_scroll_area.verticalScrollBar().setValue(0)
+            print(f"📜 文稿文本已设置，预计高度: {estimated_height}px, 行数: {line_count}")
+    
+    def scroll_to_line(self, line_number: int):
+        """滚动到指定行号"""
+        if hasattr(self, 'script_scroll_area') and line_number > 0:
+            # 估算行高（约18像素）
+            line_height = 18
+            target_position = (line_number - 1) * line_height
+            
+            # 获取滚动条的最大值，确保不超出范围
+            max_value = self.script_scroll_area.verticalScrollBar().maximum()
+            target_position = min(target_position, max_value)
+            
+            # 滚动到目标位置
+            self.script_scroll_area.verticalScrollBar().setValue(target_position)
+            print(f"📜 文稿滚动到第 {line_number} 行 (位置: {target_position}px, 最大: {max_value}px)")
+    
+    def highlight_script_line(self, line_number: int, text: str):
+        """高亮显示匹配的文稿行"""
+        try:
+            current_text = self.text_label.text()
+            lines = current_text.split('\n')
+            
+            # 查找包含指定行号的行
+            for i, line in enumerate(lines):
+                if line.startswith(f"{line_number:02d}."):
+                    # 高亮该行（使用HTML格式）
+                    highlighted_line = f"<span style='background-color: #FFE066; font-weight: bold;'>{line}</span>"
+                    lines[i] = highlighted_line
+                    break
+            
+            # 更新文本显示
+            highlighted_text = '\n'.join(lines)
+            self.text_label.setText(highlighted_text)
+            
+            # 滚动到该行
+            self.scroll_to_line(line_number)
+            
+            print(f"📍 高亮显示文稿第 {line_number} 行")
+            
+        except Exception as e:
+            print(f"❌ 高亮文稿行失败: {e}")
+    
+    def test_scroll_functionality(self):
+        """测试滚动功能（用于调试）"""
+        test_text = "📄 测试文稿滚动功能\n" + "=" * 30 + "\n\n"
+        for i in range(1, 21):  # 生成20行测试文本
+            test_text += f"{i:02d}. 这是第{i}行测试文稿内容，用于验证滚动功能是否正常工作。\n"
+        
+        self.set_script_text(test_text)
+        print("📜 测试文稿已加载，请检查滚动功能")
     
     def load_imported_script(self):
-        """加载导入的文稿并显示"""
+        """加载导入的文稿并显示（支持滚动显示更多内容）"""
         try:
             import json
             script_file_path = "imported_script.json"
@@ -987,25 +1141,36 @@ class PPTFloatingWindow(QWidget):
             import_time = script_data.get("import_time", "未知时间")
             lines = script_data.get("lines", [])
             
-            # 构建显示文本
+            # 构建显示文本 - 显示更多内容以利用滚动功能
             display_text = f"📄 {title}\n"
             display_text += f"导入时间: {import_time}\n"
-            display_text += f"共 {total_lines} 行\n\n"
+            display_text += f"共 {total_lines} 行\n"
+            display_text += "=" * 30 + "\n\n"
             
-            # 显示前3行内容作为预览
-            preview_lines = lines[:3]
-            for line_data in preview_lines:
+            # 显示所有文稿内容，让用户可以滚动查看
+            for line_data in lines:
                 line_text = line_data.get("text", "")
                 line_number = line_data.get("line_number", 0)
-                if len(line_text) > 30:
-                    line_text = line_text[:30] + "..."
+                # 不再截断文本，显示完整内容
                 display_text += f"{line_number:02d}. {line_text}\n"
             
-            if total_lines > 3:
-                display_text += f"... 还有 {total_lines - 3} 行"
-            
+            # 设置文本并调整标签高度以适应内容
             self.text_label.setText(display_text)
-            print(f"✅ 悬浮窗已加载文稿: {title}")
+            
+            # 计算所需高度（每行大约18像素，加上边距）
+            total_display_lines = display_text.count('\n') + 1
+            estimated_height = max(100, total_display_lines * 18 + 40)
+            
+            # 设置标签的固定高度而不是最小高度，确保滚动正常工作
+            self.text_label.setFixedHeight(estimated_height)
+            
+            # 强制更新滚动区域
+            if hasattr(self, 'script_scroll_area'):
+                self.script_scroll_area.updateGeometry()
+            
+            print(f"📜 文稿加载完成，显示行数: {total_display_lines}, 预计高度: {estimated_height}px")
+            
+            print(f"✅ 悬浮窗已加载文稿: {title} (共{total_lines}行)")
             return True
             
         except Exception as e:
@@ -1397,8 +1562,19 @@ class PPTFloatingWindow(QWidget):
             }
 
     def mousePressEvent(self, event):
-        """鼠标按下事件 - 用于拖拽"""
+        """鼠标按下事件 - 用于拖拽，但要避免干扰滚动区域"""
         if event.button() == Qt.LeftButton:
+            # 检查点击位置是否在滚动区域内
+            if hasattr(self, 'script_scroll_area'):
+                scroll_area_rect = self.script_scroll_area.geometry()
+                click_pos = event.position().toPoint()
+                
+                # 如果点击在滚动区域内，不启动拖拽
+                if scroll_area_rect.contains(click_pos):
+                    event.ignore()  # 让滚动区域处理这个事件
+                    return
+            
+            # 如果不在滚动区域内，启动拖拽
             self._drag_active = True
             self._drag_pos = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
             event.accept()
@@ -1408,10 +1584,16 @@ class PPTFloatingWindow(QWidget):
         if self._drag_active and event.buttons() & Qt.LeftButton:
             self.move(event.globalPosition().toPoint() - self._drag_pos)
             event.accept()
+        else:
+            event.ignore()  # 让子控件处理移动事件
 
     def mouseReleaseEvent(self, event):
         """鼠标释放事件 - 结束拖拽"""
-        self._drag_active = False
+        if self._drag_active:
+            self._drag_active = False
+            event.accept()
+        else:
+            event.ignore()  # 让子控件处理释放事件
         
     def closeEvent(self, event):
         """关闭事件"""
@@ -1780,6 +1962,40 @@ class PPTFloatingWindow(QWidget):
             'running': RTVTT.is_voice_recognition_running() if RTVTT else False
         }
     
+    def start_state_monitoring(self):
+        """启动状态监控"""
+        print("🔄 启动悬浮窗状态监控")
+        # 初始化记录当前复选框状态，但不改变按钮显示
+        self.update_last_checkbox_state()
+        # 启动定时器
+        self.checkbox_state_timer.start(2000)  # 每2秒检查一次
+    
+    def update_last_checkbox_state(self):
+        """更新记录的复选框状态，但不改变按钮显示"""
+        try:
+            # 获取主窗口实例
+            main_window = self.get_main_window()
+            if main_window:
+                # 获取当前复选框状态并记录
+                self.last_voice_enabled = main_window.voice_checkbox.isChecked() if hasattr(main_window, 'voice_checkbox') else False
+                self.last_gesture_enabled = main_window.gesture_checkbox.isChecked() if hasattr(main_window, 'gesture_checkbox') else False
+                print(f"🔄 记录复选框状态 - 语音: {self.last_voice_enabled}, 手势: {self.last_gesture_enabled}")
+        except Exception as e:
+            print(f"❌ 更新复选框状态记录失败: {e}")
+    
+    def get_main_window(self):
+        """获取主窗口实例"""
+        try:
+            from PySide6.QtWidgets import QApplication
+            app = QApplication.instance()
+            if app:
+                for widget in app.allWidgets():
+                    if hasattr(widget, 'voice_checkbox') and hasattr(widget, 'gesture_checkbox'):
+                        return widget
+            return None
+        except Exception as e:
+            return None
+
     def check_main_window_checkbox_state(self):
         """检查主窗口复选框状态变化，自动更新悬浮窗按钮"""
         try:
@@ -1791,21 +2007,9 @@ class PPTFloatingWindow(QWidget):
                 return  # 有功能在运行时不检查
             
             # 获取主窗口实例
-            main_window = None
-            try:
-                from PySide6.QtWidgets import QApplication
-                app = QApplication.instance()
-                if app:
-                    for widget in app.allWidgets():
-                        if hasattr(widget, 'voice_checkbox') and hasattr(widget, 'gesture_checkbox'):
-                            main_window = widget
-                            break
-                
-                if not main_window:
-                    return  # 没有找到主窗口
-                    
-            except Exception as e:
-                return  # 查找主窗口出错
+            main_window = self.get_main_window()
+            if not main_window:
+                return
             
             # 获取当前复选框状态
             current_voice_enabled = main_window.voice_checkbox.isChecked() if hasattr(main_window, 'voice_checkbox') else False
@@ -1815,7 +2019,8 @@ class PPTFloatingWindow(QWidget):
             state_changed = (current_voice_enabled != self.last_voice_enabled or 
                            current_gesture_enabled != self.last_gesture_enabled)
             
-            if state_changed:
+            # 只有在用户点击过开始按钮后，才根据复选框状态自动更新按钮
+            if state_changed and self.has_started_once:
                 print(f"🔄 检测到主窗口复选框状态变化:")
                 print(f"   语音识别: {self.last_voice_enabled} → {current_voice_enabled}")
                 print(f"   手势识别: {self.last_gesture_enabled} → {current_gesture_enabled}")
@@ -1848,6 +2053,10 @@ class PPTFloatingWindow(QWidget):
                     self.btn_start.setText("无功能已启用")
                     self._set_disabled_button_style()
                     print("❌ 悬浮窗按钮已更新为: 无功能已启用")
+            elif state_changed:
+                # 只更新记录的状态，不改变按钮显示
+                self.last_voice_enabled = current_voice_enabled
+                self.last_gesture_enabled = current_gesture_enabled
                     
         except Exception as e:
             # 静默处理错误，避免过多日志输出
@@ -1963,7 +2172,14 @@ class PPTFloatingWindow(QWidget):
             except Exception as e:
                 print(f"⚠️ 重置主窗口按钮状态时出错: {e}")
             
-            # 4. 关闭悬浮窗
+            # 4. 重置悬浮窗状态，确保下次加载时显示"开始"
+            print("🔄 重置悬浮窗状态...")
+            self.has_started_once = False
+            self.btn_start.setText("开始")
+            self._set_start_button_style()
+            print("✅ 悬浮窗状态已重置为初始状态")
+            
+            # 5. 关闭悬浮窗
             print("🪟 正在关闭悬浮窗...")
             self.close()
             print("✅ 悬浮窗已关闭")

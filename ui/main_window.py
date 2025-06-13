@@ -243,11 +243,21 @@ class MainWindow(QMainWindow):
                     if hasattr(self, 'script_manager') and self.script_manager:
                         # 尝试加载已导入的文稿
                         if self.script_manager.load_imported_script():
-                            # 获取文稿预览文本
-                            first_line = self.script_manager.get_line_by_number(1)
-                            if first_line:
-                                self.floating_window.set_script_text(f"📄 演讲文稿已加载\n{first_line[:50]}...")
-                            print("✅ 已将导入的文稿加载到悬浮窗")
+                            # 让悬浮窗加载完整的文稿内容
+                            if hasattr(self.floating_window, 'load_imported_script'):
+                                success = self.floating_window.load_imported_script()
+                                if success:
+                                    print("✅ 已将完整文稿加载到悬浮窗")
+                                else:
+                                    # 如果悬浮窗加载失败，使用预览文本
+                                    first_line = self.script_manager.get_line_by_number(1)
+                                    if first_line:
+                                        self.floating_window.set_script_text(f"📄 演讲文稿已加载\n{first_line[:50]}...")
+                            else:
+                                # 如果悬浮窗没有load_imported_script方法，使用预览文本
+                                first_line = self.script_manager.get_line_by_number(1)
+                                if first_line:
+                                    self.floating_window.set_script_text(f"📄 演讲文稿已加载\n{first_line[:50]}...")
                         else:
                             self.floating_window.set_script_text("📄 文稿展示区\n请先导入演讲文稿")
                     
@@ -371,14 +381,25 @@ class MainWindow(QMainWindow):
                 
                 # 如果悬浮窗存在，更新悬浮窗中的文稿显示
                 if hasattr(self, 'floating_window') and self.floating_window:
-                    # 获取文稿的第一行作为预览
-                    first_line = self.script_manager.get_line_by_number(1)
-                    if first_line:
-                        self.floating_window.set_script_text(f"📄 文稿已导入\n{first_line[:50]}...")
+                    # 让悬浮窗加载完整的文稿内容
+                    if hasattr(self.floating_window, 'load_imported_script'):
+                        success = self.floating_window.load_imported_script()
+                        if success:
+                            print("✅ 完整文稿已同步到悬浮窗")
+                        else:
+                            # 如果加载失败，使用预览文本
+                            first_line = self.script_manager.get_line_by_number(1)
+                            if first_line:
+                                self.floating_window.set_script_text(f"📄 文稿已导入\n{first_line[:50]}...")
+                            else:
+                                self.floating_window.set_script_text("📄 文稿已导入，可以开始演示")
                     else:
-                        self.floating_window.set_script_text("📄 文稿已导入，可以开始演示")
-                    
-                    print("✅ 文稿已同步到悬浮窗")
+                        # 如果悬浮窗没有load_imported_script方法，使用预览文本
+                        first_line = self.script_manager.get_line_by_number(1)
+                        if first_line:
+                            self.floating_window.set_script_text(f"📄 文稿已导入\n{first_line[:50]}...")
+                        else:
+                            self.floating_window.set_script_text("📄 文稿已导入，可以开始演示")
             
             self.update_status(f"文稿导入完成，关键词已更新，共 {len(keywords)} 个")
             print(f"📄 从文稿导入的关键词已更新: {keywords}")
@@ -398,14 +419,25 @@ class MainWindow(QMainWindow):
             if success:
                 # 如果悬浮窗存在，更新悬浮窗中的文稿显示
                 if hasattr(self, 'floating_window') and self.floating_window:
-                    # 获取文稿的第一行作为预览
-                    first_line = self.script_manager.get_line_by_number(1)
-                    if first_line:
-                        self.floating_window.set_script_text(f"📄 文稿已导入\n{first_line[:50]}...")
+                    # 让悬浮窗加载完整的文稿内容
+                    if hasattr(self.floating_window, 'load_imported_script'):
+                        success = self.floating_window.load_imported_script()
+                        if success:
+                            print("✅ 完整文稿已同步到悬浮窗")
+                        else:
+                            # 如果加载失败，使用预览文本
+                            first_line = self.script_manager.get_line_by_number(1)
+                            if first_line:
+                                self.floating_window.set_script_text(f"📄 文稿已导入\n{first_line[:50]}...")
+                            else:
+                                self.floating_window.set_script_text("📄 文稿已导入，可以开始演示")
                     else:
-                        self.floating_window.set_script_text("📄 文稿已导入，可以开始演示")
-                    
-                    print("✅ 文稿已同步到悬浮窗")
+                        # 如果悬浮窗没有load_imported_script方法，使用预览文本
+                        first_line = self.script_manager.get_line_by_number(1)
+                        if first_line:
+                            self.floating_window.set_script_text(f"📄 文稿已导入\n{first_line[:50]}...")
+                        else:
+                            self.floating_window.set_script_text("📄 文稿已导入，可以开始演示")
             
             self.update_status(f"文稿导入完成，关键词已更新，共 {len(keywords)} 个")
             print(f"📄 从文稿导入的关键词已更新: {keywords}")
