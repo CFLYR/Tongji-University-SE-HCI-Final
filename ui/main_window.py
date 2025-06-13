@@ -1099,7 +1099,7 @@ class MainWindow(QMainWindow):
         gesture_label = QLabel("启用手势识别")
         gesture_label.setStyleSheet("font-size: 14px; color: #23213A;")
         self.gesture_checkbox = QCheckBox()
-        self.gesture_checkbox.setObjectName("switchCheckBox")
+        #self.gesture_checkbox.setObjectName("switchCheckBox")
         gesture_switch_layout.addWidget(gesture_label)
         gesture_switch_layout.addStretch()
         gesture_switch_layout.addWidget(self.gesture_checkbox)
@@ -1131,7 +1131,7 @@ class MainWindow(QMainWindow):
         voice_label = QLabel("启用语音识别")
         voice_label.setStyleSheet("font-size: 14px; color: #23213A;")
         self.voice_checkbox = QCheckBox()
-        self.voice_checkbox.setObjectName("switchCheckBox")
+        #self.voice_checkbox.setObjectName("switchCheckBox")
         voice_switch_layout.addWidget(voice_label)
         voice_switch_layout.addStretch()
         voice_switch_layout.addWidget(self.voice_checkbox)
@@ -1200,7 +1200,7 @@ class MainWindow(QMainWindow):
         subtitle_label = QLabel("显示AI字幕")
         subtitle_label.setStyleSheet("font-size: 14px; color: #23213A;")
         self.subtitle_checkbox = QCheckBox()
-        self.subtitle_checkbox.setObjectName("switchCheckBox")
+        #self.subtitle_checkbox.setObjectName("switchCheckBox")
         self.subtitle_checkbox.setEnabled(False)
         subtitle_switch_layout.addWidget(subtitle_label)
         subtitle_switch_layout.addStretch()
@@ -1212,7 +1212,7 @@ class MainWindow(QMainWindow):
         script_label = QLabel("启用文稿跟随")
         script_label.setStyleSheet("font-size: 14px; color: #23213A;")
         self.script_follow_checkbox = QCheckBox()
-        self.script_follow_checkbox.setObjectName("switchCheckBox")
+        #self.script_follow_checkbox.setObjectName("switchCheckBox")
         self.script_follow_checkbox.setEnabled(False)
         self.script_follow_checkbox.toggled.connect(self.toggle_script_follow)
         script_switch_layout.addWidget(script_label)
@@ -1559,58 +1559,32 @@ class MainWindow(QMainWindow):
             QSpinBox::up-button:hover, QSpinBox::down-button:hover {
                 background-color: #5B5BF6;
             }
-            QCheckBox#switchCheckBox {
-                spacing: 12px;
+            QCheckBox {
+                margin-left: 10px;
+                margin-right: 10px;
                 font-size: 14px;
-                color: #23213A;
             }
-
-            QCheckBox#switchCheckBox::indicator {
-                width: 40px;
+            QCheckBox::indicator {
+                width: 20px;
                 height: 20px;
-                border-radius: 10px;
-                border: none;
-                outline: none;
-                /* 确保圆形滑块居中 */
-                background-position: center;
-                background-repeat: no-repeat;
-                background-size: 16px 16px; /* 圆形直径 */
             }
-
-            QCheckBox#switchCheckBox::indicator:unchecked {
-                background: qradialgradient(
-                    cx: 0.25, cy: 0.5, radius: 0.3,
-                    stop: 0 white, stop: 0.7 white, stop: 0.8 #E0E0E0, stop: 1 #E0E0E0
-                );
-                border: 2px solid #D0D0D0;
-                /* 添加白色圆形滑块 */
-                background-image: radial-gradient(circle, white 70%, transparent 70%);
+            QCheckBox::indicator:unchecked {
+                border: 2px solid #aaa;
+                background: #F5F5F5;
+                border-radius: 4px;
             }
-
-            QCheckBox#switchCheckBox::indicator:checked {
-                background: qradialgradient(
-                    cx: 0.75, cy: 0.5, radius: 0.3,
-                    stop: 0 white, stop: 0.7 white, stop: 0.8 #5B5BF6, stop: 1 #5B5BF6
-                );
-                border: 2px solid #5B5BF6;
-                /* 圆形滑块移动到右侧 */
-                background-image: radial-gradient(circle, white 70%, transparent 70%);
-                background-position: right center;
-            }
-
-            QCheckBox#switchCheckBox::indicator:hover:unchecked {
-                border: 2px solid #5B5BF6;
-            }
-
-            QCheckBox#switchCheckBox::indicator:disabled {
-                background: qradialgradient(
-                    cx: 0.25, cy: 0.5, radius: 0.3,
-                    stop: 0 #CCCCCC, stop: 0.7 #CCCCCC, stop: 0.8 #F0F0F0, stop: 1 #F0F0F0
-                );
-                border: 2px solid #E0E0E0;
-                /* 禁用状态圆形滑块 */
-                background-image: radial-gradient(circle, #F0F0F0 70%, transparent 70%);
-            }
+                         QCheckBox::indicator:checked {
+                 image: url(resources/icons/check.svg);
+                 border: 2px solid #FAB81A;
+                 background: #FAB81A;
+                 border-radius: 4px;
+             }
+             QCheckBox::indicator:disabled {
+                 border: 2px solid #ccc;
+                 background: #D3D3D3;
+                 border-radius: 4px;
+             }               
+           
             QTextEdit {
                 background-color: #F6F8FB;
                 border: 2px solid #E3E6F5;
@@ -1780,7 +1754,8 @@ class MainWindow(QMainWindow):
                 self.imported_script_lines = self.script_manager.get_lines()
                 self.current_script_position = 0  # 重置到开始位置
                 self.update_script_display()
-                self.update_status("文稿跟随已启用，将根据语音识别结果跟随文稿进度")
+                self.update_status("文稿跟随已启用")
+
                 print(f"✅ 文稿跟随已启用，共 {len(self.imported_script_lines)} 行文稿")
             else:
                 # 如果没有导入文稿，禁用文稿跟随
