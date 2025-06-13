@@ -13,6 +13,7 @@ from keyword_manager import KeywordManagerDialog
 from script_manager import ScriptImportDialog, ScriptManager
 from ppt_content_extractor import PPTContentExtractor
 from ppt_ai_advisor import PPTAIAdvisor
+from help_window import HelpWindow
 import cv2
 import numpy as np
 import win32com.client
@@ -445,6 +446,16 @@ class MainWindow(QMainWindow):
         dialog.keywords_updated.connect(on_keywords_updated)
         dialog.exec()
 
+    def show_help_window(self):
+        """显示帮助窗口"""
+        try:
+            help_window = HelpWindow(self)
+            help_window.exec()
+            print("📖 帮助窗口已显示")
+        except Exception as e:
+            self.update_status(f"显示帮助窗口失败: {str(e)}", is_error=True)
+            print(f"❌ 显示帮助窗口失败: {e}")
+
 
     def update_gesture_mapping(self, action: str, gesture: str):
         """更新手势映射"""
@@ -763,6 +774,7 @@ class MainWindow(QMainWindow):
         btn_help.setIcon(QIcon("resources/icons/help.svg"))
         btn_help.setFixedHeight(28)
         btn_help.setCursor(Qt.PointingHandCursor)
+        btn_help.clicked.connect(self.show_help_window)
 
         btn_min = QPushButton()
         btn_min.setObjectName("windowControlButton")
