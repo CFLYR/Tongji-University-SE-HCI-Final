@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout,
                                QPushButton, QLabel, QTextEdit, QCheckBox, QSpinBox,
                                QGroupBox, QFormLayout, QComboBox, QSlider, QMenu,
                                QDialog, QDialogButtonBox, QFrame, QScrollArea)
-from PySide6.QtCore import Qt, Signal, QTimer, QThread
+from PySide6.QtCore import Qt, Signal, QTimer, QThread, QPoint
 import os
 import threading
 from PySide6.QtGui import QIcon, QFont, QPixmap, QPainter, QColor
@@ -299,11 +299,20 @@ class RecordingStatusWidget(QWidget):
         super().__init__(parent)
         self.is_recording = False
         self.recording_duration = 0
+        
+        # 演示计时相关
+        self.is_presentation_timing = False
+        self.presentation_duration = 0
+        
         self.init_ui()
 
         # 录制时间更新定时器
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_duration)
+        
+        # 演示计时定时器
+        self.presentation_timer = QTimer()
+        self.presentation_timer.timeout.connect(self.update_presentation_duration)
 
     def init_ui(self):
         layout = QHBoxLayout(self)
@@ -350,6 +359,36 @@ class RecordingStatusWidget(QWidget):
             minutes = (self.recording_duration % 3600) // 60
             seconds = self.recording_duration % 60
             self.duration_label.setText(f"{hours:02d}:{minutes:02d}:{seconds:02d}")
+    
+    def start_presentation_timing(self):
+        """开始演示计时"""
+        self.is_presentation_timing = True
+        self.presentation_duration = 0
+        self.status_indicator.setStyleSheet("color: #52C41A; font-size: 12px;")  # 绿色表示演示进行中
+        self.presentation_timer.start(1000)  # 每秒更新
+        print("🕐 演示计时开始")
+
+    def stop_presentation_timing(self):
+        """停止演示计时"""
+        self.is_presentation_timing = False
+        self.status_indicator.setStyleSheet("color: #888; font-size: 12px;")  # 恢复灰色
+        self.presentation_timer.stop()
+        print("🕐 演示计时停止")
+
+    def update_presentation_duration(self):
+        """更新演示时长"""
+        if self.is_presentation_timing:
+            self.presentation_duration += 1
+            hours = self.presentation_duration // 3600
+            minutes = (self.presentation_duration % 3600) // 60
+            seconds = self.presentation_duration % 60
+            self.duration_label.setText(f"{hours:02d}:{minutes:02d}:{seconds:02d}")
+    
+    def reset_presentation_timing(self):
+        """重置演示计时"""
+        self.presentation_duration = 0
+        self.duration_label.setText("00:00:00")
+        print("🕐 演示计时重置")
 
 
 class PPTFloatingWindow(QWidget):
@@ -366,6 +405,9 @@ class PPTFloatingWindow(QWidget):
         self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint | Qt.Tool)
         self.setAttribute(Qt.WA_TranslucentBackground, True)
         self.setFixedSize(340, 260)
+        
+        # 设置初始位置到屏幕右下方
+        self._set_initial_position()
 
         # 录制相关
         if RECORDING_AVAILABLE:
@@ -385,16 +427,18 @@ class PPTFloatingWindow(QWidget):
             self.is_gesture_active = False
 
         # 主控制器引用，用于检查手势识别状态
-        self.main_controller = None        # 拖拽相关
+        self.main_controller = None
+
+        # 拖拽相关
         self._drag_active = False
         self._drag_pos = None
         self._drag_start_pos = None
-        self._button_drag_start = False  # 添加按钮拖拽状态属性
+        self._button_drag_start = False  
         
         # 最小化状态
         self._is_minimized = False
         self._normal_size = (340, 260)
-        self._minimized_size = (80, 40)  # 增大最小化尺寸以完全显示按钮
+        self._minimized_size = (80, 40)  
         self.init_ui()
 
         # 设置按钮拖拽处理
@@ -412,6 +456,29 @@ class PPTFloatingWindow(QWidget):
         self.speech_manager = None
         # 演讲稿滚动显示器
         self.speech_scroll_displayer = None
+        
+        # 主窗口状态检查定时器 - 用于检测复选框状态变化
+        self.checkbox_state_timer = QTimer()
+        self.checkbox_state_timer.timeout.connect(self.check_main_window_checkbox_state)
+        self.checkbox_state_timer.start(2000)  # 每2秒检查一次
+        
+        # 记录上次的复选框状态，避免重复更新
+        self.last_voice_enabled = False
+        self.last_gesture_enabled = False
+
+    def _set_initial_position(self):
+        """设置窗口初始位置到屏幕右下方"""
+        from PySide6.QtGui import QGuiApplication
+        screen = QGuiApplication.primaryScreen().geometry()
+        window_width = 340
+        window_height = 260
+        margin = 20  # 距离屏幕边缘的边距
+        
+        # 计算右下角位置
+        x = screen.width() - window_width - margin
+        y = screen.height() - window_height - margin - 60  # 减去任务栏高度
+        
+        self.move(x, y)
 
     def init_ui(self):
         """初始化UI"""
@@ -637,6 +704,10 @@ class PPTFloatingWindow(QWidget):
             if gesture_running:
                 self.stop_gesture_control()
             
+            # 停止演示计时
+            if hasattr(self, 'recording_status'):
+                self.recording_status.stop_presentation_timing()
+            
             # 停止功能后，重新检查状态并更新按钮
             voice_still_running = RTVTT.is_voice_recognition_running()
             gesture_still_running = self.is_gesture_active
@@ -699,6 +770,10 @@ class PPTFloatingWindow(QWidget):
         gesture_enabled = main_window.gesture_checkbox.isChecked() if hasattr(main_window, 'gesture_checkbox') else False
         
         print(f"🔍 DEBUG: 主窗口设置 - 语音识别: {voice_enabled}, 手势识别: {gesture_enabled}")
+        
+        # 开始演示计时
+        if hasattr(self, 'recording_status'):
+            self.recording_status.start_presentation_timing()
         
         # 根据复选框状态启动相应功能
         if voice_enabled and gesture_enabled:
@@ -783,20 +858,7 @@ class PPTFloatingWindow(QWidget):
             """)     
         else:  # mode == "none"
             self.btn_start.setText("无功能已启用")
-            self.btn_start.setStyleSheet("""
-                QPushButton {
-                    background: #165DFF;
-                    color: white;
-                    border-radius: 5px;
-                    font-weight: bold;
-                    padding: 0 8px;
-                    border: none;
-                    font-size: 11px;
-                }
-                QPushButton:hover {
-                    background: #466BB0;
-                }                QPushButton:pressed {
-                    background: #0F4FDD;                }            """)  
+            self._set_disabled_button_style()  
     def start_voice_recognition(self):
         """启动语音识别"""
         print("🎤 DEBUG: start_voice_recognition 被调用")
@@ -890,6 +952,17 @@ class PPTFloatingWindow(QWidget):
     def set_main_controller(self, main_controller):
         """设置主控制器引用"""
         self.main_controller = main_controller
+    
+    def update_slide_info(self, current_slide: int, total_slides: int):
+        """更新幻灯片信息"""
+        try:
+            # 这里可以添加在悬浮窗中显示幻灯片信息的逻辑
+            # 目前主要用于内部跟踪
+            self.current_slide = current_slide
+            self.total_slides = total_slides
+            print(f"📊 悬浮窗幻灯片信息更新: {current_slide}/{total_slides}")
+        except Exception as e:
+            print(f"更新悬浮窗幻灯片信息失败: {e}")
 
     def set_script_text(self, text: str):
         """设置文稿文本"""
@@ -1354,9 +1427,17 @@ class PPTFloatingWindow(QWidget):
         if hasattr(self, 'voice_subtitle_timer'):
             self.voice_subtitle_timer.stop()
         
+        # 停止复选框状态检查定时器
+        if hasattr(self, 'checkbox_state_timer'):
+            self.checkbox_state_timer.stop()
+        
         # 停止语音识别
         if self.main_controller and self.main_controller.audio_thread and self.main_controller.audio_thread.is_alive():
             RTVTT.toggle_audio_stream(False)
+
+        # 停止演示计时
+        if hasattr(self, 'recording_status'):
+            self.recording_status.stop_presentation_timing()
 
         # 清理字幕显示
         if hasattr(self, 'subtitle_display'):
@@ -1381,23 +1462,31 @@ class PPTFloatingWindow(QWidget):
         
         self._is_minimized = True
         
-        # 保存当前尺寸
+        # 保存当前尺寸和所有状态信息
         self._normal_size = (self.width(), self.height())
+        
+        # 保存当前所有控件的状态
+        self._saved_widgets = []
+        self._saved_layout = self.layout()
+        
+        # 收集除最小化按钮外的所有子控件
+        for child in self.findChildren(QWidget):
+            if child != self.minimize_btn:
+                self._saved_widgets.append(child)
         
         # 设置为最小化尺寸
         self.setFixedSize(*self._minimized_size)
         
         # 隐藏除了最小化按钮外的所有内容
-        for child in self.findChildren(QWidget):
-            if child != self.minimize_btn:
-                child.hide()
+        for widget in self._saved_widgets:
+            widget.hide()
         
         # 更改最小化按钮的样式和文本，使其成为恢复按钮
         self.minimize_btn.setText("展开")
         self.minimize_btn.setFixedSize(70, 30)  # 调整为更合适的小按钮大小
         self.minimize_btn.setStyleSheet("""
             QPushButton {
-                background: #4CAF50;
+                background: #5B5BF6;
                 color: white;
                 font-size: 11px;
                 border: none;
@@ -1405,24 +1494,27 @@ class PPTFloatingWindow(QWidget):
                 font-weight: bold;
             }
             QPushButton:hover {
-                background: #66BB6A;
+                background: #7B7BF8;
             }
             QPushButton:pressed {
-                background: #388E3C;
+                background: #3B3BF4;
             }
         """)
         
-        # 创建新的布局
-        new_layout = QVBoxLayout()
-        new_layout.addWidget(self.minimize_btn)
-        new_layout.setContentsMargins(5, 5, 5, 5)  # 增加边距确保按钮完全显示
-        new_layout.setAlignment(Qt.AlignCenter)  # 居中对齐
+        # 创建最小化布局
+        self._minimized_layout = QVBoxLayout()
+        self._minimized_layout.addWidget(self.minimize_btn)
+        self._minimized_layout.setContentsMargins(5, 5, 5, 5)
+        self._minimized_layout.setAlignment(Qt.AlignCenter)
         
-        # 清理并设置新布局
-        if self.layout():
-            QWidget().setLayout(self.layout())
-        self.setLayout(new_layout)
-        self.minimized_layout = new_layout  # 保存新布局的引用
+        # 临时移除当前布局并设置新的最小化布局
+        if self._saved_layout:
+            # 保存布局但不删除它
+            temp_widget = QWidget()
+            temp_widget.setLayout(self._saved_layout)
+            self._saved_layout_widget = temp_widget
+        
+        self.setLayout(self._minimized_layout)
         
         # 重新连接按钮的点击事件
         try:
@@ -1436,7 +1528,7 @@ class PPTFloatingWindow(QWidget):
         self.minimize_btn.mouseMoveEvent = self.button_mouse_move_event
         self.minimize_btn.mouseReleaseEvent = self.button_mouse_release_event
         
-        print("📦 悬浮窗已最小化") 
+        print("📦 悬浮窗已最小化")
         
     def restore_window(self):
         """恢复窗口"""
@@ -1452,7 +1544,7 @@ class PPTFloatingWindow(QWidget):
         # 恢复原始尺寸
         self.setFixedSize(*self._normal_size)
         
-        # 恢复最小化按钮的原始样式
+        # 先恢复最小化按钮的原始样式（在清理布局之前）
         self.minimize_btn.setText("—")
         self.minimize_btn.setFixedSize(24, 24)
         self.minimize_btn.setStyleSheet("""
@@ -1486,19 +1578,60 @@ class PPTFloatingWindow(QWidget):
         self.minimize_btn.mouseMoveEvent = lambda e: QPushButton.mouseMoveEvent(self.minimize_btn, e)
         self.minimize_btn.mouseReleaseEvent = lambda e: QPushButton.mouseReleaseEvent(self.minimize_btn, e)
         
-        # 清理当前布局
+        # 在清理布局之前，先将恢复后的按钮添加到原始布局中
+        if hasattr(self, '_saved_layout_widget') and self._saved_layout_widget:
+            original_layout = self._saved_layout_widget.layout()
+            if original_layout:
+                # 找到title_layout并将按钮重新添加
+                title_layout_item = original_layout.itemAt(0) if original_layout.count() > 0 else None
+                if title_layout_item and title_layout_item.layout():
+                    title_layout = title_layout_item.layout()
+                    
+                    # 先从当前布局中移除按钮（避免重复添加）
+                    if self.layout():
+                        current_layout = self.layout()
+                        for i in range(current_layout.count()):
+                            item = current_layout.itemAt(i)
+                            if item and item.widget() == self.minimize_btn:
+                                current_layout.removeWidget(self.minimize_btn)
+                                break
+                    
+                    # 将按钮添加到原始title_layout的末尾
+                    title_layout.addWidget(self.minimize_btn)
+                    print("✅ 最小化按钮已预先添加到原始布局")
+        
+        # 清理当前最小化布局
         if self.layout():
             QWidget().setLayout(self.layout())
         
-        # 重新初始化UI
-        self.init_ui()
+        # 恢复保存的原始布局
+        if hasattr(self, '_saved_layout_widget') and self._saved_layout_widget:
+            original_layout = self._saved_layout_widget.layout()
+            if original_layout:
+                # 从临时widget中取回布局
+                self._saved_layout_widget.setLayout(QVBoxLayout())  # 设置一个空布局给临时widget
+                self.setLayout(original_layout)  # 将原始布局设置回主窗口
+            
+            # 清理临时widget
+            self._saved_layout_widget.deleteLater()
+            self._saved_layout_widget = None
         
-        # 确保所有子控件都显示
-        for child in self.findChildren(QWidget):
-            child.show()
-            child.setVisible(True)
+        # 显示所有保存的控件
+        if hasattr(self, '_saved_widgets'):
+            for widget in self._saved_widgets:
+                if widget and not widget.isVisible():
+                    widget.show()
+                    widget.setVisible(True)
+            # 清理保存的控件列表
+            self._saved_widgets = []
         
-        # 强制更新布局
+        # 确保最小化按钮可见
+        self.minimize_btn.show()
+        self.minimize_btn.setVisible(True)
+        
+        print("✅ 窗口恢复完成，最小化按钮已正确恢复")
+        
+        # 强制更新布局和显示
         self.updateGeometry()
         self.update()
         
@@ -1518,9 +1651,36 @@ class PPTFloatingWindow(QWidget):
                 # 在最小化状态下，记录拖拽起始位置
                 self._drag_active = False  # 初始状态为未拖动
                 self._button_drag_start = True
-                # 使用全局位置来计算偏移
-                self._drag_start_pos = event.globalPosition().toPoint()
-                self._drag_pos = self._drag_start_pos - self.frameGeometry().topLeft()
+                
+                # 获取当前鼠标的全局位置
+                global_pos = event.globalPosition().toPoint()
+                
+                # 使用更可靠的窗口位置获取方法
+                # 优先使用geometry()，如果不可靠则使用保存的位置
+                try:
+                    current_window_pos = self.pos()
+                    # 检查位置是否合理（不应该有异常大的跳跃）
+                    if hasattr(self, '_pre_minimize_pos'):
+                        distance = (current_window_pos - self._pre_minimize_pos).manhattanLength()
+                        if distance > 200:  # 如果距离过大，可能是位置不准确
+                            print(f"⚠️ 检测到异常位置跳跃: {distance}px，使用备用位置")
+                            # 使用相对于pre_minimize_pos的合理位置
+                            current_window_pos = self._pre_minimize_pos
+                except:
+                    current_window_pos = self.pos()
+                
+                # 计算鼠标相对于窗口左上角的偏移量
+                self._drag_pos = global_pos - current_window_pos
+                self._drag_start_pos = global_pos
+                
+                print(f"🖱️ DEBUG: 拖拽开始 - 全局位置: {global_pos}, 窗口位置: {current_window_pos}, 偏移: {self._drag_pos}")
+                
+                # 验证偏移量是否合理（偏移量不应该超过窗口尺寸太多）
+                if abs(self._drag_pos.x()) > 100 or abs(self._drag_pos.y()) > 100:
+                    print(f"⚠️ 偏移量异常，重新计算...")
+                    # 使用按钮中心作为默认偏移
+                    self._drag_pos = QPoint(35, 15)  # 按钮大小的一半
+                
                 event.accept()
             else:
                 # 正常状态下，按钮不处理拖拽
@@ -1529,15 +1689,21 @@ class PPTFloatingWindow(QWidget):
     def button_mouse_move_event(self, event):
         """按钮的鼠标移动事件"""
         if self._is_minimized and self._button_drag_start and event.buttons() & Qt.LeftButton:
-            current_pos = event.globalPosition().toPoint()
-            move_distance = (current_pos - self._drag_start_pos).manhattanLength()
+            current_global_pos = event.globalPosition().toPoint()
+            move_distance = (current_global_pos - self._drag_start_pos).manhattanLength()
             
-            # 如果移动距离超过阈值（10像素），则启用拖动
-            if move_distance > 10:
-                self._drag_active = True
-                # 使用保存的偏移量来移动窗口
-                new_pos = current_pos - self._drag_pos
-                self.move(new_pos)
+            # 如果移动距离超过阈值（8像素），则启用拖动
+            if move_distance > 8:
+                if not self._drag_active:
+                    self._drag_active = True
+                    print(f"🖱️ DEBUG: 开始拖拽，移动距离: {move_distance}")
+            
+            # 一旦开始拖动，就持续移动窗口，保持鼠标和窗口的相对位置
+            if self._drag_active:
+                # 计算新的窗口位置：当前鼠标位置 - 初始记录的偏移量
+                new_window_pos = current_global_pos - self._drag_pos
+                self.move(new_window_pos)
+                # print(f"🖱️ DEBUG: 拖拽中 - 鼠标位置: {current_global_pos}, 新窗口位置: {new_window_pos}")
             event.accept()
         else:
             QPushButton.mouseMoveEvent(self.minimize_btn, event)
@@ -1547,16 +1713,19 @@ class PPTFloatingWindow(QWidget):
         if self._is_minimized and event.button() == Qt.LeftButton:
             if self._drag_active:
                 # 拖动结束，不触发点击
+                print("🖱️ DEBUG: 拖拽结束")
                 self._drag_active = False
                 self._button_drag_start = False
                 event.accept()
             else:
                 # 未拖动，触发按钮点击
+                print("🖱️ DEBUG: 按钮点击")
                 self._button_drag_start = False
                 self.minimize_btn.click()  # 直接模拟点击
                 event.accept()
         else:
             QPushButton.mouseReleaseEvent(self.minimize_btn, event)
+
     def set_subtitle_display_enabled(self, enabled: bool):
         """设置字幕显示开关"""
         print(f"🔧 设置字幕显示状态: {enabled}")
@@ -1610,6 +1779,119 @@ class PPTFloatingWindow(QWidget):
             'keywords': getattr(self, 'voice_keywords', []),
             'running': RTVTT.is_voice_recognition_running() if RTVTT else False
         }
+    
+    def check_main_window_checkbox_state(self):
+        """检查主窗口复选框状态变化，自动更新悬浮窗按钮"""
+        try:
+            # 如果有功能正在运行，不需要检查复选框状态
+            voice_running = RTVTT.is_voice_recognition_running()
+            gesture_running = self.is_gesture_active
+            
+            if voice_running or gesture_running:
+                return  # 有功能在运行时不检查
+            
+            # 获取主窗口实例
+            main_window = None
+            try:
+                from PySide6.QtWidgets import QApplication
+                app = QApplication.instance()
+                if app:
+                    for widget in app.allWidgets():
+                        if hasattr(widget, 'voice_checkbox') and hasattr(widget, 'gesture_checkbox'):
+                            main_window = widget
+                            break
+                
+                if not main_window:
+                    return  # 没有找到主窗口
+                    
+            except Exception as e:
+                return  # 查找主窗口出错
+            
+            # 获取当前复选框状态
+            current_voice_enabled = main_window.voice_checkbox.isChecked() if hasattr(main_window, 'voice_checkbox') else False
+            current_gesture_enabled = main_window.gesture_checkbox.isChecked() if hasattr(main_window, 'gesture_checkbox') else False
+            
+            # 检查状态是否发生变化
+            state_changed = (current_voice_enabled != self.last_voice_enabled or 
+                           current_gesture_enabled != self.last_gesture_enabled)
+            
+            if state_changed:
+                print(f"🔄 检测到主窗口复选框状态变化:")
+                print(f"   语音识别: {self.last_voice_enabled} → {current_voice_enabled}")
+                print(f"   手势识别: {self.last_gesture_enabled} → {current_gesture_enabled}")
+                
+                # 更新记录的状态
+                self.last_voice_enabled = current_voice_enabled
+                self.last_gesture_enabled = current_gesture_enabled
+                
+                # 根据新状态更新按钮显示
+                if current_voice_enabled and current_gesture_enabled:
+                    # 两个功能都启用
+                    self.btn_start.setText("开始")
+                    self._set_start_button_style()
+                    print("✅ 悬浮窗按钮已更新为: 开始 (语音+手势)")
+                    
+                elif current_voice_enabled:
+                    # 只启用语音识别
+                    self.btn_start.setText("开始")
+                    self._set_start_button_style()
+                    print("✅ 悬浮窗按钮已更新为: 开始 (语音)")
+                    
+                elif current_gesture_enabled:
+                    # 只启用手势识别
+                    self.btn_start.setText("开始")
+                    self._set_start_button_style()
+                    print("✅ 悬浮窗按钮已更新为: 开始 (手势)")
+                    
+                else:
+                    # 没有功能启用
+                    self.btn_start.setText("无功能已启用")
+                    self._set_disabled_button_style()
+                    print("❌ 悬浮窗按钮已更新为: 无功能已启用")
+                    
+        except Exception as e:
+            # 静默处理错误，避免过多日志输出
+            pass
+    
+    def _set_start_button_style(self):
+        """设置开始按钮样式（蓝色）"""
+        self.btn_start.setStyleSheet("""
+            QPushButton {
+                background: #165DFF;
+                color: white;
+                border-radius: 5px;
+                font-weight: bold;
+                padding: 0 8px;
+                border: none;
+                font-size: 11px;
+            }
+            QPushButton:hover {
+                background: #466BB0;
+            }
+            QPushButton:pressed {
+                background: #0F4FDD;
+            }
+        """)
+    
+    def _set_disabled_button_style(self):
+        """设置禁用状态按钮样式（灰色）"""
+        self.btn_start.setStyleSheet("""
+            QPushButton {
+                background: #8C8C8C;
+                color: white;
+                border-radius: 5px;
+                font-weight: bold;
+                padding: 0 8px;
+                border: none;
+                font-size: 11px;
+            }
+            QPushButton:hover {
+                background: #A6A6A6;
+            }
+            QPushButton:pressed {
+                background: #737373;
+            }
+        """)
 
     def end_presentation(self):
         """结束演示 - 完整的演示结束流程"""
@@ -1637,6 +1919,11 @@ class PPTFloatingWindow(QWidget):
             if RECORDING_AVAILABLE and self.recording_assistant and self.recording_assistant.is_recording:
                 self.stop_recording()
                 print("🎬 录制已停止")
+            
+            # 停止演示计时
+            if hasattr(self, 'recording_status'):
+                self.recording_status.stop_presentation_timing()
+                print("🕐 演示计时已停止")
               # 2. 完全关闭PPT应用程序和窗口
             print("📊 正在关闭PPT应用程序...")
             if self.main_controller:
@@ -1700,8 +1987,8 @@ class DraggableMinimizedWidget(QWidget):
         self.setFixedSize(80, 40)
         self.setStyleSheet("""
             QWidget {
-                background: rgba(76, 175, 80, 0.9);
-                border: 2px solid #4CAF50;
+                background: rgba(91, 91, 246, 0.9);
+                border: 2px solid #5B5BF6;
                 border-radius: 20px;
             }
         """)
@@ -1732,7 +2019,7 @@ class DraggableMinimizedWidget(QWidget):
         self.expand_btn.setFixedSize(50, 30)
         self.expand_btn.setStyleSheet("""
             QPushButton {
-                background: #4CAF50;
+                background: #5B5BF6;
                 color: white;
                 font-size: 10px;
                 border: none;
@@ -1740,10 +2027,10 @@ class DraggableMinimizedWidget(QWidget):
                 font-weight: bold;
             }
             QPushButton:hover {
-                background: #66BB6A;
+                background: #7B7BF8;
             }
             QPushButton:pressed {
-                background: #388E3C;
+                background: #3B3BF4;
             }
         """)
         self.expand_btn.clicked.connect(self.parent_window.restore_window)

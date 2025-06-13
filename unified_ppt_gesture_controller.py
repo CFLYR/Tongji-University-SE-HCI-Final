@@ -292,6 +292,9 @@ class UnifiedPPTGestureController:
         # 命令执行冷却控制
         self.command_cooldown_duration = 2.0  # 执行命令后冷却2秒
         self.last_command_execution_time = 0
+        
+        # 窗口名称，使用英文避免中文乱码
+        self.window_name = 'Gesture Recognition'
 
         # 尝试自动初始化PPT
        #self.auto_initialize_ppt()
@@ -700,7 +703,7 @@ class UnifiedPPTGestureController:
         
         try:
             # 暂停OpenCV窗口的键盘监听
-            cv.destroyWindow('统一PPT手势识别播放器')
+            cv.destroyWindow(self.window_name)
             
             while True:
                 user_input = input("输入文本> ").strip()
@@ -746,6 +749,19 @@ class UnifiedPPTGestureController:
         cap.set(cv.CAP_PROP_FRAME_WIDTH, 640)
         cap.set(cv.CAP_PROP_FRAME_HEIGHT, 480)
         cap.set(cv.CAP_PROP_FPS, 30)
+        
+        # 创建窗口，使用英文名称避免中文显示问题
+        cv.namedWindow(self.window_name, cv.WINDOW_NORMAL)
+        # 设置窗口位置和大小
+        cv.resizeWindow(self.window_name, 640, 480)
+        cv.moveWindow(self.window_name, 100, 100)
+        
+        # 尝试设置窗口为无边框（部分系统支持）
+        try:
+            # 使用Qt后端时可以设置无边框
+            cv.setWindowProperty(self.window_name, cv.WND_PROP_ASPECT_RATIO, cv.WINDOW_FREERATIO)
+        except:
+            pass
 
         while self.running:
             success, img = cap.read()
@@ -762,10 +778,10 @@ class UnifiedPPTGestureController:
                 self.fps = 1 / (cTime - pTime)
             pTime = cTime
             self.frame_count += 1            # 显示图像
-            cv.imshow('统一PPT手势识别播放器', img)
+            cv.imshow(self.window_name, img)
             
             # 确保摄像头窗口始终在最前面
-            cv.setWindowProperty('统一PPT手势识别播放器', cv.WND_PROP_TOPMOST, 1)# 处理按键
+            cv.setWindowProperty(self.window_name, cv.WND_PROP_TOPMOST, 1)# 处理按键
             key = cv.waitKey(1) & 0xFF
             if key == ord('q') or key == 27:  # Q或ESC退出
                 self.running = False

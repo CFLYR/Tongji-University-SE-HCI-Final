@@ -1,9 +1,10 @@
 from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                                QPushButton, QLabel, QStackedWidget, QFileDialog,
                                QSpinBox, QComboBox, QGroupBox, QFormLayout, QSpacerItem,
-                               QSizePolicy, QCheckBox, QDialog,QTextEdit,QDialogButtonBox)
+                               QSizePolicy, QCheckBox, QDialog,QTextEdit,QDialogButtonBox,
+                               QFrame, QGraphicsDropShadowEffect)
 from PySide6.QtCore import Qt, Signal, QTimer, QThread
-from PySide6.QtGui import QIcon, QPixmap, QImage
+from PySide6.QtGui import QIcon, QPixmap, QImage, QColor
 from PySide6.QtCore import QSize
 from PySide6.QtSvgWidgets import QSvgWidget
 from main_controller import MainController
@@ -27,9 +28,13 @@ class MainWindow(QMainWindow):
     
     def __init__(self):
         super().__init__()
+        
         self.setWindowTitle("大学生Presentation助手")
         self.setWindowFlags(Qt.FramelessWindowHint)
-        self.setMinimumSize(1200, 800)        # 初始化主控制器
+        self.setMinimumSize(1300, 850)
+        
+        # 设置初始窗口位置为屏幕中间
+        self._center_window()        # 初始化主控制器
         self.controller = MainController()
         self.controller.set_main_window(self)  # 设置主窗口引用
           # 初始化语音关键词列表
@@ -91,7 +96,25 @@ class MainWindow(QMainWindow):
         self.controller.start_system()
 
         self.floating_window = None  # 悬浮窗实例
+    
+    def _center_window(self):
+        """将窗口居中显示"""
+        from PySide6.QtGui import QGuiApplication
         
+        # 获取屏幕几何信息
+        screen = QGuiApplication.primaryScreen().geometry()
+        
+        # 设置初始窗口大小
+        window_width = 1400
+        window_height = 900
+        self.resize(window_width, window_height)
+        
+        # 计算居中位置
+        x = (screen.width() - window_width) // 2
+        y = (screen.height() - window_height) // 2
+        
+        # 设置窗口位置
+        self.move(x, y)
         
 
     def connect_signals(self):
@@ -476,7 +499,7 @@ class MainWindow(QMainWindow):
         hours = runtime // 3600
         minutes = (runtime % 3600) // 60
         seconds = runtime % 60
-        self.duration_label.setText(f"演示时长: {hours:02d}:{minutes:02d}:{seconds:02d}")
+        self.duration_value.setText(f"{hours:02d}:{minutes:02d}:{seconds:02d}")
 
     # 信号处理函数    
     def on_ppt_file_opened(self, file_path: str):
@@ -498,11 +521,22 @@ class MainWindow(QMainWindow):
 
     def on_slide_changed(self, slide_number: int):
         """幻灯片切换处理"""
-        self.current_page_label.setText(f"当前页码: {slide_number}")
+        if hasattr(self, 'current_ppt_content') and self.current_ppt_content:
+            total_slides = self.current_ppt_content.get('total_slides', 0)
+            self.current_page_value.setText(f"{slide_number}/{total_slides}")
+            # 同步信息到悬浮窗
+            if (hasattr(self, 'floating_window') and self.floating_window and 
+                hasattr(self.floating_window, 'update_slide_info')):
+                self.floating_window.update_slide_info(slide_number, total_slides)
+        else:
+            self.current_page_value.setText(f"{slide_number}")
+            if (hasattr(self, 'floating_window') and self.floating_window and 
+                hasattr(self.floating_window, 'update_slide_info')):
+                self.floating_window.update_slide_info(slide_number, 1)
 
     def on_gesture_detection_started(self):
         """手势检测开始处理"""
-        self.gesture_status_label.setText("✔ 手势识别已启用\n正在检测手势...")
+        self.gesture_status_label.setText("✔ 手势识别已启用")
 
     def on_gesture_detection_stopped(self):
         """手势检测停止处理"""
@@ -660,11 +694,11 @@ class MainWindow(QMainWindow):
 
         # 左侧：应用图标+标题
         icon_label = QLabel()
-        icon_label.setPixmap(QIcon("resources/icons/monitor.svg").pixmap(24, 24))
+        icon_label.setPixmap(QIcon("resources/icons/diannao.svg").pixmap(24, 24))
         icon_label.setFixedSize(28, 28)
         icon_label.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
         title_label = QLabel("PPT播放助手")
-        title_label.setStyleSheet("font-size: 20px; font-weight: bold; color: #165DFF;")
+        title_label.setStyleSheet("font-size: 20px; font-weight: bold; color: #5B5BF6;")
         title_label.setFixedHeight(28)
 
         left_layout = QHBoxLayout()
@@ -679,18 +713,18 @@ class MainWindow(QMainWindow):
         left_widget.setFixedHeight(40)
         top_layout.addWidget(left_widget, 1)
 
-        # 右侧：按钮
-        btn_open = QPushButton()
-        btn_open.setObjectName("windowControlButton")
-        btn_open.setIcon(QIcon("resources/icons/ppt.svg"))
-        btn_open.setFixedHeight(28)
-        btn_open.setCursor(Qt.PointingHandCursor)
+        # # 右侧：按钮
+        # btn_open = QPushButton()
+        # btn_open.setObjectName("windowControlButton")
+        # btn_open.setIcon(QIcon("resources/icons/ppt.svg"))
+        # btn_open.setFixedHeight(28)
+        # btn_open.setCursor(Qt.PointingHandCursor)
 
-        btn_setting = QPushButton()
-        btn_setting.setObjectName("windowControlButton")
-        btn_setting.setIcon(QIcon("resources/icons/tiaojie.svg"))
-        btn_setting.setFixedHeight(28)
-        btn_setting.setCursor(Qt.PointingHandCursor)
+        # btn_setting = QPushButton()
+        # btn_setting.setObjectName("windowControlButton")
+        # btn_setting.setIcon(QIcon("resources/icons/tiaojie.svg"))
+        # btn_setting.setFixedHeight(28)
+        # btn_setting.setCursor(Qt.PointingHandCursor)
 
         btn_help = QPushButton()
         btn_help.setObjectName("windowControlButton")
@@ -722,8 +756,8 @@ class MainWindow(QMainWindow):
         right_layout.setAlignment(Qt.AlignVCenter)
 
         right_layout.addStretch()
-        right_layout.addWidget(btn_open)
-        right_layout.addWidget(btn_setting)
+        # right_layout.addWidget(btn_open)
+        # right_layout.addWidget(btn_setting)
         right_layout.addWidget(btn_help)
         right_layout.addWidget(btn_min)
         right_layout.addWidget(btn_max)
@@ -739,36 +773,52 @@ class MainWindow(QMainWindow):
     def create_center_panel(self):
         panel = QGroupBox()
         panel.setObjectName("centerPanel")
-        panel.setStyleSheet("#centerPanel { background-color: #FCFCFC; }")
+        panel.setStyleSheet("""
+            #centerPanel {
+                background-color: #FFFFFF;
+                border-radius: 16px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+                border: none;
+            }
+        """)
 
         layout = QVBoxLayout(panel)
         layout.setSpacing(20)
-        layout.setContentsMargins(0, 170, 0, 30)
+        layout.setContentsMargins(0, 180, 0, 30)
 
         # 标题
         self.center_title = QLabel("PPT演示内容预览")
         self.center_title.setAlignment(Qt.AlignCenter)
-        self.center_title.setStyleSheet("font-size: 24px; font-weight: bold;")
+        self.center_title.setStyleSheet("font-size: 24px; font-weight: bold; color: #1A3A8F; font-family: 'Inter', 'Microsoft YaHei', Arial, sans-serif;")
         layout.addWidget(self.center_title)
 
         # 提示
         self.center_tip = QLabel("请导入或选择一个PPT文件开始播放")
         self.center_tip.setAlignment(Qt.AlignCenter)
-        self.center_tip.setStyleSheet("color: #888; font-size: 16px;")
+        self.center_tip.setStyleSheet("color: #9E9E9E; font-size: 16px; font-family: 'Inter', 'Microsoft YaHei', Arial, sans-serif;")
         layout.addWidget(self.center_tip)
 
         # 文件路径显示
         self.file_path_label = QLabel("")
         self.file_path_label.setAlignment(Qt.AlignCenter)
-        self.file_path_label.setStyleSheet("color: #666; font-size: 14px;")
+        self.file_path_label.setStyleSheet("color: #9E9E9E; font-size: 14px; font-family: 'Inter', 'Microsoft YaHei', Arial, sans-serif;")
         layout.addWidget(self.file_path_label)
 
         # 打开PPT按钮
         self.open_ppt_btn = QPushButton("   打开PPT文件")
         self.open_ppt_btn.setIcon(QIcon("resources/icons/ppt.svg"))
-        self.open_ppt_btn.setIconSize(QSize(20, 20))
-        self.open_ppt_btn.setFixedWidth(180)
-        self.open_ppt_btn.setFixedHeight(40)
+        self.open_ppt_btn.setIconSize(QSize(24, 24))
+        self.open_ppt_btn.setFixedWidth(220)
+        self.open_ppt_btn.setFixedHeight(50)
+        
+        # 设置按钮字体
+        from PySide6.QtGui import QFont
+        button_font = QFont()
+        button_font.setFamily("Microsoft YaHei")  # 微软雅黑
+        button_font.setPointSize(14)  # 字体大小
+        button_font.setBold(True)  # 粗体
+        self.open_ppt_btn.setFont(button_font)
+        
         layout.addWidget(self.open_ppt_btn, alignment=Qt.AlignCenter)
 
         self.slide_image_label = QLabel()
@@ -782,29 +832,10 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.slide_image_label, stretch=1)
         self.slide_filename_label = QLabel("")
         self.slide_filename_label.setAlignment(Qt.AlignCenter)
-        self.slide_filename_label.setStyleSheet("color: #1976D2; font-size: 15px; font-weight: bold; margin-top: 8px;")
+        self.slide_filename_label.setStyleSheet("color: #9E9E9E; font-size: 15px; font-family: 'Inter', 'Microsoft YaHei', Arial, sans-serif; margin-top: 8px;")
         self.slide_filename_label.hide()
         layout.addWidget(self.slide_filename_label)
         layout.addStretch()
-
-        # # 幻灯片预览区
-        # preview_group = QGroupBox("幻灯片预览")
-        # preview_group.setObjectName("previewGroup")
-        # preview_group.setStyleSheet("#previewGroup { background-color: white; }")
-        # preview_layout = QHBoxLayout(preview_group)
-        # preview_layout.setSpacing(5)
-        # preview_layout.setContentsMargins(0, 10, 0, 0)
-        # self.slide_previews = []
-        # for i in range(1, 6):
-        #     btn = QPushButton(str(i))
-        #     btn.setStyleSheet("font-size: 14px; background-color: #F5F5F5; border-radius: 10px;border: none;color :#757575")
-        #     btn.setMinimumHeight(80)
-        #     btn.setMinimumWidth(100)
-        #     btn.setMaximumHeight(150)
-        #     btn.setMaximumWidth(150)
-        #     self.slide_previews.append(btn)
-        #     preview_layout.addWidget(btn)
-        # layout.addWidget(preview_group)
 
         panel.setMinimumWidth(460)
 
@@ -813,451 +844,517 @@ class MainWindow(QMainWindow):
         return panel
 
     def create_right_panel(self):
-        panel = QGroupBox()
-        panel.setObjectName("rightPanel")
-        panel.setStyleSheet("#rightPanel { background-color: white; }")
+        panel = QWidget()
         layout = QVBoxLayout(panel)
-        layout.setSpacing(15)
+        layout.setSpacing(20)  # 减少卡片间距
         layout.setContentsMargins(0, 0, 0, 0)
-
-        # 演示信息
-
-        info_group = QGroupBox("")
-        info_layout = QVBoxLayout(info_group)
-        info_layout.setSpacing(0)
-        info_layout.setContentsMargins(0, 0, 0, 0)
-
-        info_title_layout = QHBoxLayout()
-        info_title_layout.setSpacing(4)
-        info_svg_widget = QSvgWidget("resources/icons/info.svg")
-        info_svg_widget.setFixedSize(20, 20)
-        info_title_label = QLabel("演示信息")
-        info_title_label.setStyleSheet("font-size: 18px; font-weight: bold; margin-left: 1px;color: #1a1a1a")
-        info_title_layout.addWidget(info_svg_widget)
-        info_title_layout.addWidget(info_title_label)
-
-        info_layout.addLayout(info_title_layout)
-        info_layout.addSpacing(15)
-        info_layout.addStretch()
-
-        info_widget = QWidget()
-        info_widget.setObjectName("infoWidget")
-        info_widget.setStyleSheet("#infoWidget { background-color: #F5F5F5; }")
-        info_widget_layout = QVBoxLayout(info_widget)
-        info_widget_layout.setSpacing(0)
-        info_widget_layout.setContentsMargins(0, 0, 0, 0)
-        self.slide_count_label = QLabel("幻灯片总数: 25")
-        self.current_page_label = QLabel("当前页码: 1/25")
-        self.duration_label = QLabel("演示时长: 03:45")
-        self.remain_label = QLabel("剩余时间: 12:15")
-        info_widget_layout.addWidget(self.slide_count_label)
-        info_widget_layout.addWidget(self.current_page_label)
-        info_widget_layout.addWidget(self.duration_label)
-        info_widget_layout.addWidget(self.remain_label)
-        info_layout.addWidget(info_widget)
-        layout.addWidget(info_group)
-
-        # 操作记录
-        record_group = QGroupBox("")
-        record_layout = QVBoxLayout(record_group)
-        record_layout.setSpacing(0)
-        record_layout.setContentsMargins(0, 0, 0, 0)
-        self.record_list = QVBoxLayout()
-
-        # 顶部自定义标题栏
-        record_title_layout = QHBoxLayout()
-        record_title_layout.setSpacing(4)
-        record_svg_widget = QSvgWidget("resources/icons/record-2.svg")
-        record_svg_widget.setFixedSize(20, 20)
-        record_title_label = QLabel("操作记录")
-        record_title_label.setStyleSheet("font-size: 18px; font-weight: bold; margin-left: 1px;color: #1a1a1a")
-        record_title_layout.addWidget(record_svg_widget)
-        record_title_layout.addWidget(record_title_label)
-        record_title_layout.addStretch()
-
-        record_layout.addLayout(record_title_layout)
-        record_layout.addSpacing(15)
-
-        # 示例记录
-        for icon, text in [
-            ("resources/icons/play.png", "开始播放/放映演示"),
-            ("resources/icons/next.png", "切换到第2页"),
-            ("resources/icons/gesture.png", "手势识别: 下一页  14:23:45")]:
-            h = QHBoxLayout()
-            lbl_icon = QLabel()
-            lbl_icon.setPixmap(QIcon(icon).pixmap(18, 18))
-            lbl_text = QLabel(text)
-            h.addWidget(lbl_icon)
-            h.addWidget(lbl_text)
-            h.addStretch()
-            self.record_list.addLayout(h)
-        record_layout.addLayout(self.record_list)
-        layout.addWidget(record_group)
-
-        # 状态提示
-        status_group = QGroupBox("")
-        status_layout = QVBoxLayout(status_group)
-        status_layout.setSpacing(0)
-        status_layout.setContentsMargins(0, 0, 0, 0)
-        # 顶部自定义标题栏
-        status_title_layout = QHBoxLayout()
-        status_title_layout.setSpacing(4)
-        status_svg_widget = QSvgWidget("resources/icons/status.svg")
-        status_svg_widget.setFixedSize(20, 20)
-        status_title_label = QLabel("状态提示")
-        status_title_label.setStyleSheet("font-size: 18px; font-weight: bold; margin-left: 1px;color: #1a1a1a")
-        status_title_layout.addWidget(status_svg_widget)
-        status_title_layout.addWidget(status_title_label)
-        status_layout.addLayout(status_title_layout)
-        status_layout.addSpacing(15)
-        status_layout.addStretch()  # 添加系统状态标签
-        self.status_label = QLabel("系统就绪")
-        self.status_label.setStyleSheet("background-color: #E8F5E9; color: #388E3C; border-radius: 6px; padding: 8px;")
-        status_layout.addWidget(self.status_label)
-
-        self.gesture_status_label = QLabel("")
-        self.gesture_status_label.setStyleSheet(
-            "background-color: #E8F5E9; color: #388E3C; border-radius: 6px; padding: 8px;")
-        self.voice_status_label = QLabel("")
-        self.voice_status_label.setStyleSheet(
-            "background-color: #E3F2FD; color: #1976D2; border-radius: 6px; padding: 8px;")
-
-        # 录像状态指示器
-        self.recording_status_label = QLabel("")
-        self.recording_status_label.setStyleSheet(
-            "background-color: #FFF3E0; color: #F57C00; border-radius: 6px; padding: 8px;")
-        self.recording_status_label.hide()  # 初始隐藏        status_layout.addWidget(self.gesture_status_label)
-        status_layout.addWidget(self.voice_status_label)
-        status_layout.addWidget(self.recording_status_label)
-        layout.addWidget(status_group)
-
-        # AI对话优化建议
-        ai_group = QGroupBox("")
-        ai_layout = QVBoxLayout(ai_group)
-        ai_layout.setSpacing(10)
-        ai_layout.setContentsMargins(0, 0, 0, 0)
         
-        # 顶部自定义标题栏
-        ai_title_layout = QHBoxLayout()
-        ai_title_layout.setSpacing(4)
-        ai_svg_widget = QSvgWidget("resources/icons/info.svg")  # 使用合适的图标
-        ai_svg_widget.setFixedSize(20, 20)
-        ai_title_label = QLabel("AI优化建议")
-        ai_title_label.setStyleSheet("font-size: 18px; font-weight: bold; margin-left: 1px;color: #1a1a1a")
-        ai_title_layout.addWidget(ai_svg_widget)
-        ai_title_layout.addWidget(ai_title_label)
-        ai_title_layout.addStretch()
+        # 创建各个卡片 - 为AI优化建议分配更多空间
+        layout.addWidget(self.create_card_widget(self.create_info_content()), 0)  # 不拉伸
+        layout.addWidget(self.create_card_widget(self.create_status_content()), 0)  # 不拉伸
+        layout.addWidget(self.create_card_widget(self.create_ai_content()), 1)  # 拉伸因子为1，占用剩余空间
         
-        ai_layout.addLayout(ai_title_layout)
-        ai_layout.addSpacing(10)
-        
-        # AI对话按钮
-        self.ai_chat_btn = QPushButton("💬 获取PPT优化建议")
-        self.ai_chat_btn.setFixedHeight(35)
-        self.ai_chat_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #165DFF;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                font-size: 13px;
-                font-weight: bold;
-                padding: 8px 12px;
-            }
-            QPushButton:hover {
-                background-color: #4080FF;
-            }
-            QPushButton:pressed {
-                background-color: #0E4BC7;
-            }
-            QPushButton:disabled {
-                background-color: #CCCCCC;
-                color: #888888;
-            }
-        """)
-        self.ai_chat_btn.setEnabled(False)  # 初始禁用，需要打开PPT后才能使用
-        self.ai_chat_btn.clicked.connect(self.request_ai_advice)
-        ai_layout.addWidget(self.ai_chat_btn)
-        
-        # AI输出框
-        self.ai_output_text = QTextEdit()
-        self.ai_output_text.setFixedHeight(150)
-        self.ai_output_text.setPlaceholderText("AI优化建议将在这里显示...\n\n请先打开PPT文件，然后点击上方按钮获取优化建议。")
-        self.ai_output_text.setStyleSheet("""
-            QTextEdit {
-                background-color: #F8F9FA;
-                border: 2px solid #E1E5E9;
-                border-radius: 8px;
-                padding: 10px;
-                font-size: 12px;
-                line-height: 1.4;
-                color: #2C3E50;
-            }
-            QTextEdit:focus {
-                border-color: #165DFF;
-            }
-        """)
-        self.ai_output_text.setReadOnly(True)
-        ai_layout.addWidget(self.ai_output_text)
-        
-        layout.addWidget(ai_group)
-
-        layout.addStretch()
         return panel
 
     def create_left_panel(self):
-        panel = QGroupBox("")
-        panel.setObjectName("leftPanel")
-        panel.setStyleSheet("#leftPanel { background-color: white; }")
+        panel = QWidget()
         layout = QVBoxLayout(panel)
-        layout.setSpacing(15)
-        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(18)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self.create_card_widget(self.create_play_control_content()))
+        layout.addWidget(self.create_card_widget(self.create_gesture_control_content()))
+        layout.addWidget(self.create_card_widget(self.create_voice_control_content()))
+        layout.addStretch()
+        return panel
 
-        # 播放控制
-        control_group = QGroupBox("")
-        main_vlayout = QVBoxLayout(control_group)
-        main_vlayout.setSpacing(0)
-        main_vlayout.setContentsMargins(0, 0, 0, 0)
-        # 顶部自定义标题栏
-        control_title_layout = QHBoxLayout()
-        control_title_layout.setSpacing(4)
-        control_svg_widget = QSvgWidget("resources/icons/设置.svg")
-        control_svg_widget.setFixedSize(20, 20)
-        control_title_label = QLabel("播放控制")
-        control_title_label.setStyleSheet("font-size: 18px; font-weight: bold; margin-left: 1px;color: #1a1a1a")
-        control_title_layout.addWidget(control_svg_widget)
-        control_title_layout.addWidget(control_title_label)
-        control_title_layout.addStretch()
+    def create_card_widget(self, content_widget):
+        card = QFrame()
+        card.setStyleSheet("""
+            QFrame {
+                background: #fff;
+                border-radius: 14px;
+                border: none;
+            }
+        """)
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(16)
+        shadow.setOffset(0, 2)
+        shadow.setColor(QColor(0, 0, 0, 25))
+        card.setGraphicsEffect(shadow)
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.addWidget(content_widget)
+        # 设置卡片的尺寸策略，允许垂直方向拉伸
+        card.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
+        return card
 
-        main_vlayout.addLayout(control_title_layout)
-
-        control_layout = QHBoxLayout()
-        control_layout.setSpacing(15)
-
+    def create_play_control_content(self):
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setSpacing(14)
+        layout.setContentsMargins(0, 0, 0, 0)
+        # 标题区
+        title_layout = QHBoxLayout()
+        icon = QSvgWidget("resources/icons/播放.svg")
+        icon.setFixedSize(20, 20)
+        title = QLabel("播放控制")
+        title.setStyleSheet("font-size: 16px; font-weight: bold; color: #23213A;")
+        title_layout.addWidget(icon)
+        title_layout.addWidget(title)
+        title_layout.addStretch()
+        layout.addLayout(title_layout)
+        # 内容区
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(15)
         self.start_btn = QPushButton("开始播放")
         self.start_btn.setIcon(QIcon("resources/icons/运行.svg"))
-        self.start_btn.setIconSize(QSize(80, 20))
-        self.start_btn.setMinimumHeight(28)
-        self.start_btn.setMaximumWidth(100)
-        self.start_btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.start_btn.setStyleSheet("margin-left:0px;margin-right:0px;")
+        self.start_btn.setIconSize(QSize(16, 16))
+        self.start_btn.setFixedHeight(32)
+        self.start_btn.setMinimumWidth(120)
+        self.start_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.start_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #5B5BF6;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                font-size: 14px;
+                font-weight: bold;
+                padding: 0px 16px;
+            }
+            QPushButton:hover {
+                background-color: #CFC3F9;
+                color: #23213A;
+            }
+            QPushButton:pressed {
+                background-color: #E3E6F5;
+            }
+        """)
+        btn_layout.addWidget(self.start_btn)
+        layout.addLayout(btn_layout)
+        return widget
 
-        control_layout.addWidget(self.start_btn)
-
-        main_vlayout.addLayout(control_layout)
-        layout.addWidget(control_group)
-
-        # 手势控制
-        gesture_group = QGroupBox("")
-        gesture_layout = QVBoxLayout(gesture_group)
-        gesture_layout.setSpacing(10)
-        gesture_layout.setContentsMargins(0, 0, 0, 0)
-
-        # 顶部自定义标题栏
-        gesture_title_layout = QHBoxLayout()
-        gesture_title_layout.setSpacing(4)
-        gesture_svg_widget = QSvgWidget("resources/icons/gesture.svg")
-        gesture_svg_widget.setFixedSize(20, 20)
-        gesture_title_label = QLabel("手势控制")
-        gesture_title_label.setStyleSheet("font-size: 18px; font-weight: bold; margin-left: 1px;color: #1a1a1a")
-        gesture_title_layout.addWidget(gesture_svg_widget)
-        gesture_title_layout.addWidget(gesture_title_label)
-        gesture_title_layout.addStretch()
-
-        gesture_layout.addLayout(gesture_title_layout)
-
-        # 手势功能映射
+    def create_gesture_control_content(self):
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setSpacing(14)
+        layout.setContentsMargins(0, 0, 0, 0)
+        # 标题区
+        title_layout = QHBoxLayout()
+        icon = QSvgWidget("resources/icons/gesture.svg")
+        icon.setFixedSize(20, 20)
+        title = QLabel("手势控制")
+        title.setStyleSheet("font-size: 16px; font-weight: bold; color: #23213A;")
+        title_layout.addWidget(icon)
+        title_layout.addWidget(title)
+        title_layout.addStretch()
+        layout.addLayout(title_layout)
+        # 内容区
         mapping_group = QGroupBox("")
-        mapping_group.setStyleSheet(
-            "QGroupBox { margin-top: 10px; padding-top: 10px; border: none; ;background-color: #F5F5F5;}")
+        mapping_group.setStyleSheet("QGroupBox { margin-top: 8px; padding: 12px; border: none; background-color: transparent; }")
         mapping_layout = QFormLayout(mapping_group)
-        mapping_layout.setSpacing(10)
+        mapping_layout.setSpacing(12)
         mapping_layout.setContentsMargins(0, 0, 0, 0)
-
         self.gesture_mappings = {}
-        # 只包含后端实际支持的手势选项
-        gestures = [
-            "向左滑动",  # swipe_left - 后端支持
-            "向右滑动",  # swipe_right - 后端支持
-            "向上滑动",  # swipe_up - 后端支持
-            "向下滑动",  # swipe_down - 后端支持
-            "握拳",  # fist (静态手势) - 后端支持
-            "张开手掌",  # open_hand (静态手势) - 后端支持
-            "OK手势",  # ok (静态手势) - 后端支持
-            "食指",  # point (静态手势) - 后端支持
-            "双手手势",  # dual_hand - 后端支持
-            "无"  # 禁用该功能
-        ]
+        gestures = ["向左滑动", "向右滑动", "向上滑动", "向下滑动", "握拳", "张开手掌", "OK手势", "食指", "双手手势", "无"]
         actions = ["上一页", "下一页", "开始播放", "结束播放", "暂停", "继续"]
-
-        # 从后端配置读取默认设置
         default_gestures = self.get_default_gesture_settings()
-
         for i, action in enumerate(actions):
             label = QLabel(f"{action}:")
-            label.setStyleSheet("color: #222; font-size: 14px;")
+            label.setStyleSheet("color: #666; font-size: 13px;")
+            label.setFixedWidth(65)
             combo = QComboBox()
             combo.addItems(gestures)
-
-            # 设置默认值
+            combo.setFixedHeight(28)
+            combo.setEditable(True)
+            combo.lineEdit().setAlignment(Qt.AlignVCenter | Qt.AlignHCenter)
+            combo.lineEdit().setReadOnly(True)
+            combo.setStyleSheet("QComboBox { text-align: center; font-size: 13px; }")
+            combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            combo.setMinimumContentsLength(6)
             default_gesture = default_gestures.get(action, gestures[i] if i < len(gestures) else "无")
             combo.setCurrentText(default_gesture)
-
             self.gesture_mappings[action] = combo
-            mapping_layout.addRow(label, combo)
-
-        gesture_layout.addWidget(mapping_group)
-
-        # 检测间隔设置
+            row_layout = QHBoxLayout()
+            row_layout.setAlignment(Qt.AlignVCenter)
+            row_layout.addWidget(label)
+            row_layout.addWidget(combo)
+            mapping_layout.addRow(row_layout)
+        layout.addWidget(mapping_group)
+        # 检测间隔
         interval_group = QWidget()
-        interval_layout = QFormLayout(interval_group)
-        interval_layout.setSpacing(10)
+        interval_layout = QHBoxLayout(interval_group)
+        interval_layout.setSpacing(12)
         interval_layout.setContentsMargins(0, 0, 0, 0)
-
+        
+        interval_label = QLabel("检测间隔:")
+        interval_label.setStyleSheet("color: #666; font-size: 13px;")
+        interval_label.setFixedWidth(65)
+        
         self.interval_spin = QSpinBox()
         self.interval_spin.setRange(50, 1000)
         self.interval_spin.setSingleStep(100)
         self.interval_spin.setValue(200)
         self.interval_spin.setSuffix(" ms")
-        interval_layout.addRow("检测间隔:", self.interval_spin)
-        gesture_layout.addWidget(interval_group)
-
-        # 手势检测按钮
-        self.gesture_checkbox = QCheckBox("启用手势识别")
-        self.gesture_checkbox.setStyleSheet("QCheckBox {}")
-
-        gesture_layout.addWidget(self.gesture_checkbox, alignment=Qt.AlignLeft)
-        layout.addWidget(gesture_group)
-
-        # 语音识别
-        voice_group = QGroupBox("")
-        voice_layout = QVBoxLayout(voice_group)
-        voice_layout.setSpacing(10)
-        voice_layout.setContentsMargins(0, 0, 0, 0)
-        # 顶部自定义标题栏
-        voice_title_layout = QHBoxLayout()
-        voice_title_layout.setSpacing(4)
-        voice_svg_widget = QSvgWidget("resources/icons/voice.svg")
-        voice_svg_widget.setFixedSize(20, 20)
-        voice_title_label = QLabel("语音识别")
-        voice_title_label.setStyleSheet("font-size: 18px; font-weight: bold; margin-left: 1px;color: #1a1a1a")
-        voice_title_layout.addWidget(voice_svg_widget)
-        voice_title_layout.addWidget(voice_title_label)
-        voice_title_layout.addStretch()
-
-        voice_layout.addLayout(voice_title_layout)
-
-        self.voice_label = QLabel("语音识别已启用\n等待语音指令...")
-        self.voice_label.setStyleSheet("background-color: #F5F5F5; padding: 10px; border-radius: 5px;")
-        voice_layout.addWidget(self.voice_label)
-
-        voice_layout.addStretch()        # 语音识别按钮
-        self.voice_checkbox = QCheckBox("启用语音识别")
-        self.voice_checkbox.setStyleSheet("QCheckBox {}")
-
-        voice_layout.addWidget(self.voice_checkbox, alignment=Qt.AlignLeft)
-          # 关键词设置按钮
-        keyword_layout = QHBoxLayout()
-        keyword_layout.setContentsMargins(0, 5, 0, 5)
-        keyword_layout.setSpacing(8)
+        self.interval_spin.setFixedHeight(28)
+        self.interval_spin.setStyleSheet("""
+            QSpinBox {
+                background-color: white;
+                border: 1px solid #E3E6F5;
+                border-radius: 6px;
+                padding: 4px 8px;
+                font-size: 13px;
+                color: #23213A;
+            }
+            QSpinBox:focus {
+                border-color: #5B5BF6;
+            }
+            QSpinBox::up-button, QSpinBox::down-button {
+                border: none;
+                background: transparent;
+                width: 16px;
+            }
+            QSpinBox::up-arrow, QSpinBox::down-arrow {
+                width: 8px;
+                height: 8px;
+            }
+        """)
         
+        interval_layout.addWidget(interval_label)
+        interval_layout.addWidget(self.interval_spin)
+        interval_layout.addStretch()
+        layout.addWidget(interval_group)
+        # 手势检测checkbox
+        gesture_switch_layout = QHBoxLayout()
+        gesture_switch_layout.setContentsMargins(0, 0, 0, 0)
+        gesture_label = QLabel("启用手势识别")
+        gesture_label.setStyleSheet("font-size: 14px; color: #23213A;")
+        self.gesture_checkbox = QCheckBox()
+        self.gesture_checkbox.setObjectName("switchCheckBox")
+        gesture_switch_layout.addWidget(gesture_label)
+        gesture_switch_layout.addStretch()
+        gesture_switch_layout.addWidget(self.gesture_checkbox)
+        layout.addLayout(gesture_switch_layout)
+        return widget
+
+    def create_voice_control_content(self):
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setSpacing(14)
+        layout.setContentsMargins(0, 0, 0, 0)
+        # 标题区
+        title_layout = QHBoxLayout()
+        icon = QSvgWidget("resources/icons/voice.svg")
+        icon.setFixedSize(20, 20)
+        title = QLabel("语音识别")
+        title.setStyleSheet("font-size: 16px; font-weight: bold; color: #23213A;")
+        title_layout.addWidget(icon)
+        title_layout.addWidget(title)
+        title_layout.addStretch()
+        layout.addLayout(title_layout)
+        # 内容区（复用原有语音识别内容）
+        self.voice_label = QLabel("语音识别已启用\n等待语音指令...")
+        self.voice_label.setStyleSheet("background-color: #F8F9FA; padding: 12px; border-radius: 8px; font-size: 13px; color: #666; line-height: 1.4;")
+        layout.addWidget(self.voice_label)
+        # 启用语音识别开关
+        voice_switch_layout = QHBoxLayout()
+        voice_switch_layout.setContentsMargins(0, 0, 0, 0)
+        voice_label = QLabel("启用语音识别")
+        voice_label.setStyleSheet("font-size: 14px; color: #23213A;")
+        self.voice_checkbox = QCheckBox()
+        self.voice_checkbox.setObjectName("switchCheckBox")
+        voice_switch_layout.addWidget(voice_label)
+        voice_switch_layout.addStretch()
+        voice_switch_layout.addWidget(self.voice_checkbox)
+        layout.addLayout(voice_switch_layout)
+        keyword_layout = QHBoxLayout()
+        keyword_layout.setContentsMargins(0, 4, 0, 4)
+        keyword_layout.setSpacing(10)
         self.keyword_settings_btn = QPushButton("设置关键词")
-        self.keyword_settings_btn.setFixedHeight(32)
+        self.keyword_settings_btn.setFixedHeight(30)
+        self.keyword_settings_btn.setMinimumWidth(85)
         self.keyword_settings_btn.setStyleSheet("""
             QPushButton {
-                background-color: #f39c12;
+                background-color: #5B5BF6;
                 color: white;
                 border: none;
                 border-radius: 6px;
-                font-size: 12px;
-                font-weight: bold;
-                padding: 6px 12px;
-                margin: 2px;
-                min-height: 20px;
+                font-size: 13px;
+                font-weight: 500;
+                padding: 0px 12px;
             }
             QPushButton:hover {
-                background-color: #e67e22;
+                background-color: #CFC3F9;
+                color: #23213A;
             }
             QPushButton:pressed {
-                background-color: #d35400;
+                background-color: #E3E6F5;
+            }
+            QPushButton:disabled {
+                background-color: #E3E6F5;
+                color: #8B8BA7;
             }
         """)
         self.keyword_settings_btn.clicked.connect(self.show_keyword_settings)
-        
-        # 文稿导入按钮
         self.script_import_btn = QPushButton("导入文稿")
-        self.script_import_btn.setFixedHeight(32)
+        self.script_import_btn.setFixedHeight(30)
+        self.script_import_btn.setMinimumWidth(85)
         self.script_import_btn.setStyleSheet("""
             QPushButton {
-                background-color: #27ae60;
+                background-color: #5B5BF6;
                 color: white;
                 border: none;
                 border-radius: 6px;
-                font-size: 12px;
-                font-weight: bold;
-                padding: 6px 12px;
-                margin: 2px;
-                min-height: 20px;
+                font-size: 13px;
+                font-weight: 500;
+                padding: 0px 12px;
             }
             QPushButton:hover {
-                background-color: #2ecc71;
+                background-color: #CFC3F9;
+                color: #23213A;
             }
             QPushButton:pressed {
-                background-color: #229954;
+                background-color: #E3E6F5;
+            }
+            QPushButton:disabled {
+                background-color: #E3E6F5;
+                color: #8B8BA7;
             }
         """)
         self.script_import_btn.clicked.connect(self.show_script_import_dialog)
-        
         keyword_layout.addWidget(self.keyword_settings_btn)
         keyword_layout.addWidget(self.script_import_btn)
-        keyword_layout.addStretch()
-        voice_layout.addLayout(keyword_layout)
-          # 字幕显示按钮
-        self.subtitle_checkbox = QCheckBox("显示AI字幕")
-        self.subtitle_checkbox.setStyleSheet("QCheckBox {}")
-        self.subtitle_checkbox.setEnabled(False)  # 默认禁用，需要先启用语音识别
-        
-        voice_layout.addWidget(self.subtitle_checkbox, alignment=Qt.AlignLeft)
-        
-        # 文稿跟随复选框
-        self.script_follow_checkbox = QCheckBox("启用文稿跟随")
-        self.script_follow_checkbox.setStyleSheet("QCheckBox {}")
-        self.script_follow_checkbox.setEnabled(False)  # 默认禁用，需要先启用语音识别
+        layout.addLayout(keyword_layout)
+        # 显示AI字幕开关
+        subtitle_switch_layout = QHBoxLayout()
+        subtitle_switch_layout.setContentsMargins(0, 0, 0, 0)
+        subtitle_label = QLabel("显示AI字幕")
+        subtitle_label.setStyleSheet("font-size: 14px; color: #23213A;")
+        self.subtitle_checkbox = QCheckBox()
+        self.subtitle_checkbox.setObjectName("switchCheckBox")
+        self.subtitle_checkbox.setEnabled(False)
+        subtitle_switch_layout.addWidget(subtitle_label)
+        subtitle_switch_layout.addStretch()
+        subtitle_switch_layout.addWidget(self.subtitle_checkbox)
+        layout.addLayout(subtitle_switch_layout)
+        # 启用文稿跟随开关
+        script_switch_layout = QHBoxLayout()
+        script_switch_layout.setContentsMargins(0, 0, 0, 0)
+        script_label = QLabel("启用文稿跟随")
+        script_label.setStyleSheet("font-size: 14px; color: #23213A;")
+        self.script_follow_checkbox = QCheckBox()
+        self.script_follow_checkbox.setObjectName("switchCheckBox")
+        self.script_follow_checkbox.setEnabled(False)
         self.script_follow_checkbox.toggled.connect(self.toggle_script_follow)
+        script_switch_layout.addWidget(script_label)
+        script_switch_layout.addStretch()
+        script_switch_layout.addWidget(self.script_follow_checkbox)
+        layout.addLayout(script_switch_layout)
+        return widget
+
+    def create_info_content(self):
+        widget = QWidget()
+        widget.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)  # 固定高度
+        layout = QVBoxLayout(widget)
+        layout.setSpacing(16)
+        layout.setContentsMargins(0, 0, 0, 0)
         
-        voice_layout.addWidget(self.script_follow_checkbox, alignment=Qt.AlignLeft)
-        layout.addWidget(voice_group)
+        # 标题区
+        title_layout = QHBoxLayout()
+        icon = QSvgWidget("resources/icons/info.svg")
+        icon.setFixedSize(20, 20)
+        title = QLabel("演示信息")
+        title.setStyleSheet("font-size: 18px; font-weight: bold; color: #23213A;")
+        title_layout.addWidget(icon)
+        title_layout.addWidget(title)
+        title_layout.addStretch()
+        layout.addLayout(title_layout)
+        
+        # 内容区域
+        info_widget = QWidget()
+        info_widget.setObjectName("infoWidget")
+        info_widget.setStyleSheet("#infoWidget { background-color: white; border-radius: 8px; padding: 16px; }")
+        info_layout = QVBoxLayout(info_widget)
+        info_layout.setSpacing(12)
+        info_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # 创建标签
+        self.slide_count_label = QLabel("幻灯片总数:")
+        self.slide_count_value = QLabel("0")
+        self.current_page_label = QLabel("当前页码:")
+        self.current_page_value = QLabel("0/0")
+        self.duration_label = QLabel("演示时长:")
+        self.duration_value = QLabel("00:00:00")
+        
+        # 设置标签样式
+        label_style = "color: #888; font-size: 13px; font-weight: normal;"
+        value_style = "color: #222; font-size: 14px; font-weight: bold;"
+        
+        for label in [self.slide_count_label, self.current_page_label, self.duration_label]:
+            label.setStyleSheet(label_style)
+        for value in [self.slide_count_value, self.current_page_value, self.duration_value]:
+            value.setStyleSheet(value_style)
+        
+        # 第一行：幻灯片总数和当前页码
+        row1_layout = QHBoxLayout()
+        row1_layout.setSpacing(0)
+        
+        # 左半部分：幻灯片总数
+        left_layout = QVBoxLayout()
+        left_layout.setSpacing(2)
+        left_layout.addWidget(self.slide_count_label)
+        left_layout.addWidget(self.slide_count_value)
+        
+        # 右半部分：当前页码
+        right_layout = QVBoxLayout()
+        right_layout.setSpacing(2)
+        right_layout.addWidget(self.current_page_label)
+        right_layout.addWidget(self.current_page_value)
+        
+        row1_layout.addLayout(left_layout)
+        row1_layout.addStretch()
+        row1_layout.addLayout(right_layout)
+        
+        # 第二行：演示时长
+        row2_layout = QHBoxLayout()
+        row2_layout.setSpacing(0)
+        
+        duration_layout = QVBoxLayout()
+        duration_layout.setSpacing(2)
+        duration_layout.addWidget(self.duration_label)
+        duration_layout.addWidget(self.duration_value)
+        
+        row2_layout.addLayout(duration_layout)
+        row2_layout.addStretch()
+        
+        info_layout.addLayout(row1_layout)
+        info_layout.addLayout(row2_layout)
+        
+        layout.addWidget(info_widget)
+        return widget
 
-        # 添加弹性空间
-        layout.addStretch()
-        return panel
 
-    # def update_video(self):
-    #     """更新视频显示"""
-    #     ret, frame = self.cap.read()
-    #     if ret:
-    #         # 处理帧
-    #         frame = self.controller.process_frame(frame)
 
-    #         # 转换颜色空间
-    #         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    def create_status_content(self):
+        widget = QWidget()
+        widget.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)  # 固定高度
+        layout = QVBoxLayout(widget)
+        layout.setSpacing(16)
+        layout.setContentsMargins(0, 0, 0, 0)
+        
+        # 标题区
+        title_layout = QHBoxLayout()
+        icon = QSvgWidget("resources/icons/status.svg")
+        icon.setFixedSize(20, 20)
+        title = QLabel("状态提示")
+        title.setStyleSheet("font-size: 18px; font-weight: bold; color: #23213A;")
+        title_layout.addWidget(icon)
+        title_layout.addWidget(title)
+        title_layout.addStretch()
+        layout.addLayout(title_layout)
+        
+        # 内容区域 - 系统状态
+        self.status_label = QLabel("系统就绪")
+        self.status_label.setStyleSheet("background-color: #E8F5E9; color: #388E3C; border-radius: 6px; padding: 8px; font-size: 14px;")
+        layout.addWidget(self.status_label)
+        
+        # 手势状态
+        self.gesture_status_label = QLabel("")
+        self.gesture_status_label.setStyleSheet(
+            "background-color: #E8F5E9; color: #388E3C; border-radius: 6px; padding: 8px; font-size: 14px;")
+        layout.addWidget(self.gesture_status_label)
+        
+        # 语音状态
+        self.voice_status_label = QLabel("")
+        self.voice_status_label.setStyleSheet(
+            "background-color: #E3F2FD; color: #1976D2; border-radius: 6px; padding: 8px; font-size: 14px;")
+        layout.addWidget(self.voice_status_label)
+        
+        # 录像状态指示器
+        self.recording_status_label = QLabel("")
+        self.recording_status_label.setStyleSheet(
+            "background-color: #FFF3E0; color: #F57C00; border-radius: 6px; padding: 8px; font-size: 14px;")
+        self.recording_status_label.hide()  # 初始隐藏
+        layout.addWidget(self.recording_status_label)
+        
+        return widget
 
-    #         # 转换为QImage
-    #         h, w, ch = frame.shape
-    #         bytes_per_line = ch * w
-    #         qt_image = QImage(frame.data, w, h, bytes_per_line, QImage.Format_RGB888)
-
-    #         # 更新预览标签
-    #         self.preview_label.setPixmap(QPixmap.fromImage(qt_image).scaled(
-    #             self.preview_label.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation
-    #         ))
+    def create_ai_content(self):
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setSpacing(16)
+        layout.setContentsMargins(0, 0, 0, 0)
+        
+        # 标题区
+        title_layout = QHBoxLayout()
+        icon = QSvgWidget("resources/icons/ai.svg") 
+        icon.setFixedSize(20, 20)
+        title = QLabel("AI优化建议")
+        title.setStyleSheet("font-size: 18px; font-weight: bold; color: #23213A;")
+        title_layout.addWidget(icon)
+        title_layout.addWidget(title)
+        title_layout.addStretch()
+        layout.addLayout(title_layout)
+        
+        # AI按钮
+        self.ai_chat_btn = QPushButton("💬 获取PPT优化建议")
+        self.ai_chat_btn.setFixedHeight(35)
+        self.ai_chat_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #5B5BF6;
+                color: white;
+                border: none;
+                border-radius: 12px;
+                font-size: 13px;
+                font-weight: bold;
+                padding: 8px 12px;
+            }
+            QPushButton:hover {
+                background-color: #CFC3F9;
+                color: #23213A;
+            }
+            QPushButton:pressed {
+                background-color: #E3E6F5;
+            }
+            QPushButton:disabled {
+                background-color: #E3E6F5;
+                color: #8B8BA7;
+            }
+        """)
+        self.ai_chat_btn.setEnabled(False)  # 初始禁用，需要打开PPT后才能使用
+        self.ai_chat_btn.clicked.connect(self.request_ai_advice)
+        layout.addWidget(self.ai_chat_btn)
+        
+        # AI输出文本框 - 使用弹性布局，允许随窗口大小变化
+        self.ai_output_text = QTextEdit()
+        self.ai_output_text.setMinimumHeight(150)
+        self.ai_output_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.ai_output_text.setPlaceholderText("AI优化建议将在这里显示...\n\n请先打开PPT文件，然后点击上方按钮获取优化建议。")
+        self.ai_output_text.setStyleSheet("""
+            QTextEdit {
+                background-color: #F6F8FB;
+                border: 2px solid #E3E6F5;
+                border-radius: 12px;
+                padding: 12px;
+                font-size: 12px;
+                line-height: 1.4;
+                color: #23213A;
+            }
+            QTextEdit:focus {
+                border-color: #5B5BF6;
+            }
+        """)
+        self.ai_output_text.setReadOnly(True)
+        layout.addWidget(self.ai_output_text, 1)  # 设置拉伸因子为1，使其占用剩余空间
+        
+        return widget
 
     def update_ppt_info(self):
         """更新PPT信息显示"""
         if self.controller.ppt_controller.is_active():
             # 更新幻灯片信息
-            self.slide_count_label.setText(f"幻灯片总数: {self.controller.ppt_controller.get_status()['total_slides']}")
-            self.current_page_label.setText(f"当前页码: {self.controller.ppt_controller.get_status()['current_slide']}")
+            self.slide_count_value.setText(f"{self.controller.ppt_controller.get_status()['total_slides']}")
+            self.current_page_value.setText(f"{self.controller.ppt_controller.get_status()['current_slide']}")
 
             # 更新预览按钮状态
             for i, btn in enumerate(self.slide_previews):
@@ -1278,27 +1375,6 @@ class MainWindow(QMainWindow):
         self.update_status(error_message, True)
         print(f"错误: {error_message}")
 
-    def update_ppt_info(self):
-        """更新PPT信息显示"""
-        if self.controller.ppt_controller.is_active():
-            # 更新幻灯片信息
-            self.slide_count_label.setText(f"幻灯片总数: {self.controller.ppt_controller.get_status()['total_slides']}")
-            self.current_page_label.setText(f"当前页码: {self.controller.ppt_controller.get_status()['current_slide']}")
-
-            # 更新预览按钮状态
-            for i, btn in enumerate(self.slide_previews):
-                if i < len(self.slide_previews):
-                    btn.setEnabled(True)
-                    btn.clicked.connect(lambda x, idx=i + 1: self.jump_to_slide(idx))
-
-    def jump_to_slide(self, slide_number: int):
-        """跳转到指定幻灯片"""
-        try:
-            self.controller.jump_to_slide(slide_number)
-            self.update_status(f"已跳转到第 {slide_number} 页")
-        except Exception as e:
-            self.handle_error(f"跳转失败: {str(e)}")
-
     def closeEvent(self, event):
         """窗口关闭事件处理"""
         try:
@@ -1316,155 +1392,187 @@ class MainWindow(QMainWindow):
     def load_styles(self):
         self.setStyleSheet("""
             QMainWindow {
-                background-color: #F5F5F5;
+                background-color: #F6F8FB;
             }
-
             QWidget {
-                color: #333333;  
+                color: #23213A;
             }
             QGroupBox {
                 font-size: 18px;
                 font-weight: bold;
                 border: none;
-                border-radius: 10px;
-                margin-top: 15px;
+                margin-top: 0px;
                 padding: 15px;
-                background-color:white;
-                color: #1a1a1a;  
+                border-radius: 12px;
+                background-color: #FFFFFF;
+                color: #23213A;
+                box-shadow: 0 2px 12px rgba(35,33,58,0.04);
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
                 left: 15px;
                 padding: 0 8px;
-                color: #1a1a1a;
+                color: #23213A;
             }
-            #previewGroup { 
-                background-color: white !important;
+            #previewGroup {
+                background-color: #FFFFFF !important;
                 border-radius: 10px;
-                color: #333;
+                color: #23213A;
+                box-shadow: 0 2px 12px rgba(35,33,58,0.04);
             }
             #previewGroup:title {
-                color: #333;
+                color: #23213A;
             }
-            
             QPushButton {
-                background-color: #165DFF;
-                color: white;
+                background-color: #5B5BF6;
+                color: #fff;
                 border: none;
-                padding: 6px 12px;
-                margin: 8px;
-                border-radius: 8px;
-                font-size: 14px;
-                min-height: 50px;
-                font-weight: bold;
-        
+                border-radius: 12px;
+                box-shadow: 0 2px 8px rgba(35,33,58,0.06);
+                transition: background 0.2s;
             }
             QPushButton#windowControlButton {
                 background: none;
-                border-radius: 4px;
-                padding: 0px;
-                margin: 0px;
-                min-height: 28px;
-                min-width: 28px;
+                border-radius: 10px;
             }
             QPushButton:checked {
-                background-color: #466BB0;
+                background-color: #CFC3F9;
             }
             QPushButton:hover {
-                background-color: #466BB0;
+                background-color: #CFC3F9;
+                color: #23213A;
             }
             QPushButton:pressed {
-                background-color: #395A96;
+                background-color: #E3E6F5;
             }
             QPushButton:disabled {
-                background-color: #BDBDBD;
-                color: #757575;
+                background-color: #E3E6F5;
+                color: #8B8BA7;
             }
             QLabel {
-                font-size: 14px;
-                color: #424242;
-                padding: 2px;
-                font-weight: 500;
+                color: #23213A;
             }
             QLabel#previewimage {
-                background: white;
-                border-radius: 4px;
-                padding: 0px;
-                margin: 0px;    
-                min-height: 240px;
-                min-width: 427px;
+                background: #FFFFFF;
+                border-radius: 12px;
+                box-shadow: 0 2px 8px rgba(35,33,58,0.04);
             }
-            QSpinBox, QComboBox {
-                padding: 2px;
-                border: 2px solid #E0E0E0;
-                border-radius: 6px;
-                min-height: 16px;
-                background-color: white;
-                selection-background-color: #5C8EDC;
-                selection-color: white; 
+            QSpinBox, QComboBox, QTextEdit, QLineEdit {
+                border: 2px solid #E3E6F5;
+                border-radius: 12px;
+                background-color: #F6F8FB;
+                selection-background-color: #CFC3F9;
+                selection-color: #23213A;
+                color: #23213A;
+                box-shadow: 0 1px 4px rgba(35,33,58,0.03);
             }
-            QSpinBox:hover, QComboBox:hover {
-                border-color: #5C8EDC;
+            QSpinBox:hover, QComboBox:hover, QTextEdit:hover, QLineEdit:hover {
+                border-color: #CFC3F9;
             }
-            QSpinBox:focus, QComboBox:focus {
-                border-color: #466BB0;
+            QSpinBox:focus, QComboBox:focus, QTextEdit:focus, QLineEdit:focus {
+                border-color: #5B5BF6;
             }
             QComboBox::drop-down {
                 border: none;
-                width: 30px;
-            }
-            QComboBox::down-arrow {
-                image: url(resources/icons/down-arrow.png);
-                width: 12px;
-                height: 12px;
             }
             QComboBox QAbstractItemView {
-                border: 2px solid #5C8EDC;
-                border-radius: 6px;
-                background-color: white;
-                selection-background-color: #5C8EDC;
-                selection-color: white;
+                border: 2px solid #CFC3F9;
+                border-radius: 12px;
+                background-color: #FFFFFF;
+                selection-background-color: #CFC3F9;
+                selection-color: #23213A;
             }
             QSpinBox::up-button, QSpinBox::down-button {
                 border: none;
-                background-color: #5C8EDC;
-                border-radius: 3px;
-                width: 20px;
+                background-color: #CFC3F9;
+                border-radius: 8px;
             }
             QSpinBox::up-button:hover, QSpinBox::down-button:hover {
-                background-color: #466BB0;
+                background-color: #5B5BF6;
             }
-            QSpinBox::up-arrow, QSpinBox::down-arrow {
-                width: 8px;
-                height: 8px;
-            }
-            QSpinBox::up-arrow {
-                image: url(resources/icons/up.svg);
-            }
-            QSpinBox::down-arrow {
-                image: url(resources/icons/down.svg);
-            }
-            QCheckBox {
-                margin-left: 5px;
-                margin-right: 5px;
+            QCheckBox#switchCheckBox {
+                spacing: 12px;
                 font-size: 14px;
+                color: #23213A;
             }
-            QCheckBox::indicator {
-                width: 14px;
-                height: 14px;
+
+            QCheckBox#switchCheckBox::indicator {
+                width: 40px;
+                height: 20px;
+                border-radius: 10px;
+                border: none;
+                outline: none;
+                /* 确保圆形滑块居中 */
+                background-position: center;
+                background-repeat: no-repeat;
+                background-size: 16px 16px; /* 圆形直径 */
             }
-            QCheckBox::indicator:unchecked {
-                border: 2px solid #aaa;
-                background: #F5F5F5;
-                border-radius: 4px;
+
+            QCheckBox#switchCheckBox::indicator:unchecked {
+                background: qradialgradient(
+                    cx: 0.25, cy: 0.5, radius: 0.3,
+                    stop: 0 white, stop: 0.7 white, stop: 0.8 #E0E0E0, stop: 1 #E0E0E0
+                );
+                border: 2px solid #D0D0D0;
+                /* 添加白色圆形滑块 */
+                background-image: radial-gradient(circle, white 70%, transparent 70%);
             }
-            QCheckBox::indicator:checked {
-                image: url(resources/icons/check.svg);
-                border: 2px solid #FAB81A;
-                background: #FAB81A;
-                border-radius: 4px;
+
+            QCheckBox#switchCheckBox::indicator:checked {
+                background: qradialgradient(
+                    cx: 0.75, cy: 0.5, radius: 0.3,
+                    stop: 0 white, stop: 0.7 white, stop: 0.8 #5B5BF6, stop: 1 #5B5BF6
+                );
+                border: 2px solid #5B5BF6;
+                /* 圆形滑块移动到右侧 */
+                background-image: radial-gradient(circle, white 70%, transparent 70%);
+                background-position: right center;
             }
-                           
+
+            QCheckBox#switchCheckBox::indicator:hover:unchecked {
+                border: 2px solid #5B5BF6;
+            }
+
+            QCheckBox#switchCheckBox::indicator:disabled {
+                background: qradialgradient(
+                    cx: 0.25, cy: 0.5, radius: 0.3,
+                    stop: 0 #CCCCCC, stop: 0.7 #CCCCCC, stop: 0.8 #F0F0F0, stop: 1 #F0F0F0
+                );
+                border: 2px solid #E0E0E0;
+                /* 禁用状态圆形滑块 */
+                background-image: radial-gradient(circle, #F0F0F0 70%, transparent 70%);
+            }
+            QTextEdit {
+                background-color: #F6F8FB;
+                border: 2px solid #E3E6F5;
+                border-radius: 12px;
+                color: #23213A;
+                box-shadow: 0 1px 4px rgba(35,33,58,0.03);
+            }
+            QTextEdit:focus {
+                border-color: #5B5BF6;
+            }
+            #topBar {
+                background-color: #FFFFFF;
+                border-radius: 0 0 12px 12px;
+                color: #23213A;
+                box-shadow: 0 2px 8px rgba(35,33,58,0.06);
+            }
+            #leftPanel {
+                background-color: #FFFFFF;
+                border-radius: 12px;
+                box-shadow: 0 2px 12px rgba(35,33,58,0.04);
+            }
+            .QLabel[status="success"] {
+                background-color: #E3F9F1;
+                color: #5B5BF6;
+                border-radius: 10px;
+            }
+            .QLabel[status="error"] {
+                background-color: #FFF0F3;
+                color: #CFC3F9;
+                border-radius: 10px;
+            }
         """)
 
     def get_default_gesture_settings(self):
@@ -1903,6 +2011,33 @@ class MainWindow(QMainWindow):
             self.ai_output_updated.emit(error_msg)
             self.status_updated.emit("获取AI建议失败", True)
             self.ai_button_reset.emit()
+
+    def request_ai_advice(self):
+        """请求AI优化建议"""
+        # 添加调试信息
+        print(f"🔍 DEBUG: 当前PPT路径: {self.controller.ppt_controller.current_ppt_path}")
+        print(f"🔍 DEBUG: AI按钮是否启用: {self.ai_chat_btn.isEnabled()}")
+        
+        # 检查是否有打开的PPT
+        if not self.controller.ppt_controller.current_ppt_path:
+            self.ai_output_text.setText("❌ 请先打开一个PPT文件，然后再请求AI优化建议。")
+            self.update_status("请先打开PPT文件", is_error=True)
+            return
+        
+        # 禁用按钮，防止重复点击
+        self.ai_chat_btn.setEnabled(False)
+        self.ai_chat_btn.setText("AI分析中... ⏳")
+        
+        # 显示加载信息
+        self.ai_output_text.setText("🤖 AI正在分析您的PPT内容，请稍候...\n\n这可能需要几秒钟时间。")
+        self.update_status("AI正在分析PPT内容...")
+        
+        # 在后台线程中处理AI请求
+        threading.Thread(target=self._process_ai_request, daemon=True).start()            
+        # 使用信号发送更新
+        self.ai_output_updated.emit(error_msg)
+        self.status_updated.emit("获取AI建议失败", True)
+        self.ai_button_reset.emit()
 
     def request_ai_advice(self):
         """请求AI优化建议"""

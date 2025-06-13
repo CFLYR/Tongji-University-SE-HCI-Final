@@ -1,6 +1,15 @@
-"__pycache__/" 
-"*.pyc" 
-*.pyc
-/__pycache__
-/__pycache__
-/__pycache__
+# 忽略所有虚拟环境文件
+hci_env/
+
+# 忽略Python编译缓存
+__pycache__/
+*.py[cod]
+
+# 忽略系统文件
+.DS_Store
+Thumbs.db
+
+# 忽略IDE配置文件
+.idea/
+.vscode/
+*.swp

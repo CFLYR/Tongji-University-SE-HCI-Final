@@ -26,65 +26,76 @@ class CustomInputDialog(QDialog):
     def __init__(self, parent=None, title="输入", label="请输入:", text=""):
         super().__init__(parent)
         self.setWindowTitle(title)
-        self.setFixedSize(400, 150)
-        self.setWindowFlags(Qt.Dialog | Qt.WindowTitleHint | Qt.WindowCloseButtonHint)
+        self.setFixedSize(420, 180)
+        self.setWindowFlags(Qt.Dialog | Qt.FramelessWindowHint)
         
-        # 设置固定样式，不受Windows主题影响
+        # 设置与主窗口一致的样式
         self.setStyleSheet("""
             QDialog {
-                background-color: #ffffff;
-                color: #2c3e50;
+                background-color: #F6F8FB;
+                color: #23213A;
                 font-family: "Microsoft YaHei", "SimHei", Arial, sans-serif;
+                border-radius: 16px;
+                border: 2px solid #E3E6F5;
             }
             QLabel {
-                color: #2c3e50;
-                font-size: 14px;
+                color: #23213A;
+                font-size: 12px;
                 background-color: transparent;
             }
             QLineEdit {
-                background-color: #ffffff;
-                color: #2c3e50;
-                border: 2px solid #e1e5e9;
-                border-radius: 6px;
-                padding: 8px;
-                font-size: 14px;
-                selection-background-color: #3498db;
-                selection-color: #ffffff;
+                background-color: #FFFFFF;
+                color: #23213A;
+                border: 2px solid #E3E6F5;
+                border-radius: 8px;
+                padding: 10px;
+                font-size: 12px;
+                selection-background-color: #CFC3F9;
+                selection-color: #23213A;
+                box-shadow: 0 1px 4px rgba(35,33,58,0.03);
             }
             QLineEdit:focus {
-                border-color: #3498db;
+                border-color: #5B5BF6;
             }
             QPushButton {
-                background-color: #3498db;
+                background-color: #5B5BF6;
                 color: white;
                 border: none;
-                border-radius: 6px;
-                font-size: 14px;
+                border-radius: 10px;
+                font-size: 12px;
                 font-weight: bold;
-                padding: 8px 16px;
-                min-width: 80px;
+                padding: 6px 14px;
+                min-width: 70px;
+                box-shadow: 0 2px 8px rgba(35,33,58,0.06);
             }
             QPushButton:hover {
-                background-color: #2980b9;
+                background-color: #CFC3F9;
+                color: #23213A;
             }
             QPushButton:pressed {
-                background-color: #21618c;
+                background-color: #E3E6F5;
             }
             QPushButton#cancelBtn {
-                background-color: #95a5a6;
+                background-color: #E3E6F5;
+                color: #8B8BA7;
             }
             QPushButton#cancelBtn:hover {
-                background-color: #7f8c8d;
+                background-color: #CFC3F9;
+                color: #23213A;
             }
         """)
         
         self.init_ui(label, text)
         self.result_text = ""
+        
+        # 确保窗口尺寸生效
+        self.setFixedSize(420, 180)
+        self.resize(420, 180)
     
     def init_ui(self, label_text, default_text):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(15)
+        layout.setSpacing(16)
         
         # 标签
         label = QLabel(label_text)
@@ -92,18 +103,22 @@ class CustomInputDialog(QDialog):
         
         # 输入框
         self.line_edit = QLineEdit(default_text)
+        self.line_edit.setMinimumHeight(40)
         self.line_edit.selectAll()
         layout.addWidget(self.line_edit)
         
         # 按钮
         button_layout = QHBoxLayout()
+        button_layout.setSpacing(10)
         button_layout.addStretch()
         
         cancel_btn = QPushButton("取消")
         cancel_btn.setObjectName("cancelBtn")
+        cancel_btn.setFixedSize(75, 32)
         cancel_btn.clicked.connect(self.reject)
         
         ok_btn = QPushButton("确定")
+        ok_btn.setFixedSize(75, 32)
         ok_btn.clicked.connect(self.accept)
         ok_btn.setDefault(True)
         
@@ -113,6 +128,9 @@ class CustomInputDialog(QDialog):
         
         # 设置焦点
         self.line_edit.setFocus()
+        
+        # 设置窗口大小策略
+        layout.setSizeConstraint(QVBoxLayout.SetFixedSize)
     
     def get_text(self):
         return self.line_edit.text().strip()
@@ -138,30 +156,40 @@ class CustomMessageBox:
         msg_box.setIcon(QMessageBox.Warning)
         msg_box.setStandardButtons(QMessageBox.Ok)
         
-        # 设置固定样式
+        # 设置无边框窗口
+        msg_box.setWindowFlags(Qt.Dialog | Qt.FramelessWindowHint)
+        
+        # 设置与主窗口一致的样式
         msg_box.setStyleSheet("""
             QMessageBox {
-                background-color: #ffffff;
-                color: #2c3e50;
+                background-color: #F6F8FB;
+                color: #23213A;
                 font-family: "Microsoft YaHei", "SimHei", Arial, sans-serif;
+                border-radius: 16px;
+                border: 2px solid #E3E6F5;
+                min-width: 300px;
+                min-height: 150px;
             }
             QMessageBox QLabel {
-                color: #2c3e50;
-                font-size: 14px;
+                color: #23213A;
+                font-size: 12px;
                 background-color: transparent;
+                padding: 10px;
             }
             QMessageBox QPushButton {
-                background-color: #3498db;
+                background-color: #5B5BF6;
                 color: white;
                 border: none;
-                border-radius: 6px;
-                font-size: 14px;
+                border-radius: 10px;
+                font-size: 12px;
                 font-weight: bold;
-                padding: 8px 16px;
-                min-width: 80px;
+                padding: 6px 14px;
+                min-width: 70px;
+                box-shadow: 0 2px 8px rgba(35,33,58,0.06);
             }
             QMessageBox QPushButton:hover {
-                background-color: #2980b9;
+                background-color: #CFC3F9;
+                color: #23213A;
             }
         """)
         
@@ -177,30 +205,85 @@ class CustomMessageBox:
         msg_box.setStandardButtons(buttons)
         msg_box.setDefaultButton(default_button)
         
-        # 设置固定样式
+        # 设置无边框窗口
+        msg_box.setWindowFlags(Qt.Dialog | Qt.FramelessWindowHint)
+        
+        # 强制设置固定尺寸
+        msg_box.setFixedSize(380, 200)
+        
+        # 设置与主窗口一致的样式
         msg_box.setStyleSheet("""
             QMessageBox {
-                background-color: #ffffff;
-                color: #2c3e50;
+                background-color: #F6F8FB;
+                color: #23213A;
                 font-family: "Microsoft YaHei", "SimHei", Arial, sans-serif;
+                border-radius: 16px;
+                border: 2px solid #E3E6F5;
+                min-width: 380px;
+                min-height: 200px;
             }
             QMessageBox QLabel {
-                color: #2c3e50;
-                font-size: 14px;
+                color: #23213A;
+                font-size: 15px;
+                font-weight: 500;
                 background-color: transparent;
+                text-align: center;
+                qproperty-alignment: AlignCenter;
+                padding: 30px 25px 25px 25px;
+                margin: 10px 5px;
+            }
+            QMessageBox QLabel#qt_msgbox_label {
+                color: #23213A;
+                font-size: 15px;
+                font-weight: 500;
+                background-color: transparent;
+                text-align: center;
+                qproperty-alignment: AlignCenter;
+                padding: 30px 25px 25px 25px;
+                margin: 10px 5px;
+            }
+            QMessageBox .QLabel {
+                font-size: 15px;
+                padding: 30px 25px 25px 25px;
+                margin: 10px 5px;
             }
             QMessageBox QPushButton {
-                background-color: #3498db;
+                background-color: #5B5BF6;
                 color: white;
                 border: none;
-                border-radius: 6px;
-                font-size: 14px;
+                border-radius: 10px;
+                font-size: 13px;
                 font-weight: bold;
-                padding: 8px 16px;
-                min-width: 80px;
+                padding: 10px 20px;
+                min-width: 85px;
+                min-height: 36px;
+                margin: 8px 10px;
+                box-shadow: 0 2px 8px rgba(35,33,58,0.06);
             }
             QMessageBox QPushButton:hover {
-                background-color: #2980b9;
+                background-color: #CFC3F9;
+                color: #23213A;
+            }
+            QMessageBox QPushButton[text="Yes"] {
+                background-color: #F56565;
+                margin-right: 10px;
+            }
+            QMessageBox QPushButton[text="Yes"]:hover {
+                background-color: #E53E3E;
+                color: white;
+            }
+            QMessageBox QPushButton[text="No"] {
+                background-color: #E3E6F5;
+                color: #8B8BA7;
+                margin-left: 10px;
+            }
+            QMessageBox QPushButton[text="No"]:hover {
+                background-color: #CFC3F9;
+                color: #23213A;
+            }
+            QMessageBox QDialogButtonBox {
+                alignment: center;
+                margin: 20px 15px 20px 15px;
             }
         """)
         
@@ -214,30 +297,31 @@ class KeywordListWidget(QListWidget):
         super().__init__()
         self.setStyleSheet("""
             QListWidget {
-                background-color: #ffffff;
-                border: 2px solid #e1e5e9;
-                border-radius: 8px;
-                padding: 4px;
-                font-size: 14px;
-                selection-background-color: #e3f2fd;
-                selection-color: #1976d2;
+                background-color: transparent;
+                border: none;
+                border-radius: 0px;
+                padding: 0px;
+                font-size: 12px;
+                selection-background-color: transparent;
+                selection-color: #23213A;
                 outline: none;
+                margin: 0px;
             }
             QListWidget::item {
-                padding: 8px;
-                border: 1px solid #e9ecef;
-                border-radius: 6px;
-                margin: 4px 2px;
-                background-color: #ffffff;
+                padding: 0px;
+                border: none;
+                border-radius: 0px;
+                margin: 0px;    
+                background-color: transparent;
             }
             QListWidget::item:hover {
-                background-color: #f8f9fa;
-                border-color: #3498db;
+                background-color: transparent;
+                border-color: transparent;
             }
             QListWidget::item:selected {
-                background-color: #e3f2fd;
-                border-color: #1976d2;
-                color: #1976d2;
+                background-color: transparent;
+                border-color: transparent;
+                color: #23213A;
             }
         """)
 
@@ -256,19 +340,20 @@ class KeywordItemWidget(QWidget):
     def init_ui(self):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(12, 8, 12, 8)
-        layout.setSpacing(12)
+        layout.setSpacing(10)
         
         # 设置整个控件的最小高度和背景色
         self.setMinimumHeight(50)
         self.setStyleSheet("""
             QWidget {
-                background-color: #ffffff;
-                border-radius: 6px;
-                border: 1px solid #e1e5e9;
+                background-color: #FFFFFF;
+                border-radius: 10px;
+                border: 1px solid #E3E6F5;
+                box-shadow: 0 1px 4px rgba(35,33,58,0.03);
             }
             QWidget:hover {
-                border-color: #3498db;
-                background-color: #f8f9fa;
+                border-color: #5B5BF6;
+                background-color: #F6F8FB;
             }
         """)
         
@@ -276,58 +361,61 @@ class KeywordItemWidget(QWidget):
         self.keyword_label = QLabel(self.keyword)
         self.keyword_label.setStyleSheet("""
             QLabel {
-                color: #2c3e50;
-                font-size: 16px;
+                color: #23213A;
+                font-size: 13px;
                 font-weight: 600;
-                padding: 8px 12px;
-                background-color: #f8f9fa;
-                border-radius: 4px;
-                border: 1px solid #dee2e6;
-                min-height: 20px;
+                padding: 6px 10px;
+                background-color: transparent;
+                border: none;
+                min-height: 16px;
             }
         """)
-        self.keyword_label.setMinimumWidth(150)
+        self.keyword_label.setMinimumWidth(140)
         
         # 编辑按钮
         self.edit_btn = QPushButton("编辑")
-        self.edit_btn.setFixedSize(70, 32)
+        self.edit_btn.setFixedSize(65, 30)
         self.edit_btn.setStyleSheet("""
             QPushButton {
-                background-color: #17a2b8;
+                background-color: #5B5BF6;
                 color: white;
                 border: none;
                 border-radius: 6px;
-                font-size: 13px;
+                font-size: 11px;
                 font-weight: bold;
-                min-height: 30px;
+                min-height: 26px;
+                box-shadow: 0 2px 8px rgba(35,33,58,0.06);
             }
             QPushButton:hover {
-                background-color: #138496;
+                background-color: #CFC3F9;
+                color: #23213A;
             }
             QPushButton:pressed {
-                background-color: #0c6c7e;
+                background-color: #E3E6F5;
             }
         """)
         self.edit_btn.clicked.connect(self.edit_keyword)
         
         # 删除按钮
         self.delete_btn = QPushButton("删除")
-        self.delete_btn.setFixedSize(70, 32)
+        self.delete_btn.setFixedSize(65, 30)
         self.delete_btn.setStyleSheet("""
             QPushButton {
-                background-color: #dc3545;
+                background-color: #F56565;
                 color: white;
                 border: none;
                 border-radius: 6px;
-                font-size: 13px;
+                font-size: 11px;
                 font-weight: bold;
-                min-height: 30px;
+                min-height: 26px;
+                box-shadow: 0 2px 8px rgba(35,33,58,0.06);
             }
             QPushButton:hover {
-                background-color: #c82333;
+                background-color: #E53E3E;
+                color: white;
             }
             QPushButton:pressed {
-                background-color: #a71e2a;
+                background-color: #C53030;
             }
         """)
         self.delete_btn.clicked.connect(self.delete_keyword)
@@ -366,32 +454,34 @@ class KeywordManagerDialog(QDialog):
         
         # 设置窗口属性
         self.setWindowTitle("语音翻页关键词设置")
-        self.setFixedSize(500, 600)
-        self.setWindowFlags(Qt.Dialog | Qt.WindowTitleHint | Qt.WindowCloseButtonHint)
+        self.setFixedSize(420, 480)
+        self.setWindowFlags(Qt.Dialog | Qt.FramelessWindowHint)
         
-        # 应用自定义样式，不受Windows主题影响
+        # 应用与主窗口一致的样式
         self.setStyleSheet("""
             QDialog {
-                background-color: #f8f9fa;
-                color: #2c3e50;
+                background-color: #F6F8FB;
+                color: #23213A;
                 font-family: "Microsoft YaHei", "SimHei", Arial, sans-serif;
+                border-radius: 16px;
+                border: 2px solid #E3E6F5;
             }
         """)
     
     def init_ui(self):
         """初始化UI"""
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setContentsMargins(18, 18, 18, 18)
         layout.setSpacing(16)
         
         # 标题
         title_label = QLabel("语音翻页关键词管理")
         title_label.setStyleSheet("""
             QLabel {
-                color: #2c3e50;
-                font-size: 20px;
+                color: #23213A;
+                font-size: 16px;
                 font-weight: bold;
-                padding: 10px 0px;
+                padding: 6px 0px;
                 background-color: transparent;
             }
         """)
@@ -401,34 +491,37 @@ class KeywordManagerDialog(QDialog):
         desc_label = QLabel("设置语音识别触发翻页的关键词，至少需要保留一个关键词")
         desc_label.setStyleSheet("""
             QLabel {
-                color: #7f8c8d;
-                font-size: 14px;
-                padding: 5px 10px;
-                background-color: #ecf0f1;
-                border-radius: 6px;
+                color: #8B8BA7;
+                font-size: 11px;
+                padding: 6px 12px;
                 background-color: transparent;
+                border-radius: 0px;
+                border: none;
+                box-shadow: 0 1px 4px rgba(35,33,58,0.03);
             }
         """)
         desc_label.setWordWrap(True)
         
         # 新增按钮
         self.add_btn = QPushButton("+ 新增关键词")
-        self.add_btn.setFixedHeight(40)
+        self.add_btn.setFixedHeight(38)
         self.add_btn.setStyleSheet("""
             QPushButton {
-                background-color: #27ae60;
+                background-color: #5B5BF6;
                 color: white;
                 border: none;
-                border-radius: 8px;
-                font-size: 14px;
+                border-radius: 10px;
+                font-size: 12px;
                 font-weight: bold;
-                padding: 8px 16px;
+                padding: 6px 14px;
+                box-shadow: 0 2px 8px rgba(35,33,58,0.06);
             }
             QPushButton:hover {
-                background-color: #229954;
+                background-color: #CFC3F9;
+                color: #23213A;
             }
             QPushButton:pressed {
-                background-color: #1e8449;
+                background-color: #E3E6F5;
             }
         """)
         self.add_btn.clicked.connect(self.add_keyword)
@@ -437,31 +530,34 @@ class KeywordManagerDialog(QDialog):
         list_container = QFrame()
         list_container.setStyleSheet("""
             QFrame {
-                background-color: white;
-                border: 2px solid #e1e5e9;
+                background-color: #FFFFFF;
+                border: 2px solid #E3E6F5;
                 border-radius: 10px;
                 padding: 8px;
+                box-shadow: 0 2px 8px rgba(35,33,58,0.06);
             }
         """)
         
         list_layout = QVBoxLayout(list_container)
-        list_layout.setContentsMargins(8, 8, 8, 8)
+        list_layout.setContentsMargins(12, 12, 12, 12)
         
         # 列表标题
         list_title = QLabel("当前关键词列表")
         list_title.setStyleSheet("""
             QLabel {
-                color: #2c3e50;
-                font-size: 16px;
+                color: #23213A;
+                font-size: 13px;
                 font-weight: bold;
-                padding: 8px 0px;
+                padding: 6px 0px;
                 background-color: transparent;
+                border: none;
+                border-radius: 0px;
             }
         """)
         
         # 关键词列表
         self.keyword_list = KeywordListWidget()
-        self.keyword_list.setMinimumHeight(300)
+        self.keyword_list.setMinimumHeight(280)
         
         list_layout.addWidget(list_title)
         list_layout.addWidget(self.keyword_list)
@@ -471,41 +567,45 @@ class KeywordManagerDialog(QDialog):
         button_layout.setSpacing(12)
         
         self.cancel_btn = QPushButton("取消")
-        self.cancel_btn.setFixedSize(100, 35)
+        self.cancel_btn.setFixedSize(90, 34)
         self.cancel_btn.setStyleSheet("""
             QPushButton {
-                background-color: #95a5a6;
-                color: white;
+                background-color: #E3E6F5;
+                color: #8B8BA7;
                 border: none;
-                border-radius: 6px;
-                font-size: 14px;
+                border-radius: 10px;
+                font-size: 12px;
                 font-weight: bold;
+                box-shadow: 0 2px 8px rgba(35,33,58,0.06);
             }
             QPushButton:hover {
-                background-color: #7f8c8d;
+                background-color: #CFC3F9;
+                color: #23213A;
             }
             QPushButton:pressed {
-                background-color: #6c7b7d;
+                background-color: #F6F8FB;
             }
         """)
         self.cancel_btn.clicked.connect(self.reject)
         
         self.confirm_btn = QPushButton("确定")
-        self.confirm_btn.setFixedSize(100, 35)
+        self.confirm_btn.setFixedSize(90, 34)
         self.confirm_btn.setStyleSheet("""
             QPushButton {
-                background-color: #3498db;
+                background-color: #5B5BF6;
                 color: white;
                 border: none;
-                border-radius: 6px;
-                font-size: 14px;
+                border-radius: 10px;
+                font-size: 12px;
                 font-weight: bold;
+                box-shadow: 0 2px 8px rgba(35,33,58,0.06);
             }
             QPushButton:hover {
-                background-color: #2980b9;
+                background-color: #CFC3F9;
+                color: #23213A;
             }
             QPushButton:pressed {
-                background-color: #21618c;
+                background-color: #E3E6F5;
             }
         """)
         self.confirm_btn.clicked.connect(self.accept)
@@ -534,7 +634,7 @@ class KeywordManagerDialog(QDialog):
             widget.delete_requested.connect(self.delete_keyword)
             
             # 设置足够的高度来显示按钮
-            widget.setMinimumHeight(60)
+            widget.setMinimumHeight(56)
             item.setSizeHint(widget.sizeHint())
             
             self.keyword_list.addItem(item)

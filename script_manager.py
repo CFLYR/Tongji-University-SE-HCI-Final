@@ -13,6 +13,118 @@ import os
 import json
 
 
+class CustomMessageBox:
+    """自定义消息框，不受Windows主题影响"""
+    
+    @staticmethod
+    def warning(parent, title, text):
+        """显示警告消息"""
+        msg_box = QMessageBox(parent)
+        msg_box.setWindowTitle(title)
+        msg_box.setText(text)
+        msg_box.setIcon(QMessageBox.Warning)
+        msg_box.setStandardButtons(QMessageBox.Ok)
+        
+        # 设置无边框窗口
+        msg_box.setWindowFlags(Qt.Dialog | Qt.FramelessWindowHint)
+        
+        # 设置与主窗口一致的样式
+        msg_box.setStyleSheet("""
+            QMessageBox {
+                background-color: #F6F8FB;
+                color: #23213A;
+                font-family: "Microsoft YaHei", "SimHei", Arial, sans-serif;
+                border-radius: 16px;
+                border: 2px solid #E3E6F5;
+                min-width: 320px;
+                min-height: 160px;
+            }
+            QMessageBox QLabel {
+                color: #23213A;
+                font-size: 14px;
+                font-weight: 500;
+                background-color: transparent;
+                text-align: center;
+                qproperty-alignment: AlignCenter;
+                padding: 15px 20px 10px 20px;
+                margin: 5px 0px;
+            }
+            QMessageBox QPushButton {
+                background-color: #5B5BF6;
+                color: white;
+                border: none;
+                border-radius: 10px;
+                font-size: 12px;
+                font-weight: bold;
+                padding: 8px 20px;
+                min-width: 80px;
+                min-height: 32px;
+                margin: 5px;
+                box-shadow: 0 2px 8px rgba(35,33,58,0.06);
+            }
+            QMessageBox QPushButton:hover {
+                background-color: #CFC3F9;
+                color: #23213A;
+            }
+        """)
+        
+        return msg_box.exec()
+    
+    @staticmethod
+    def information(parent, title, text):
+        """显示信息消息"""
+        msg_box = QMessageBox(parent)
+        msg_box.setWindowTitle(title)
+        msg_box.setText(text)
+        msg_box.setIcon(QMessageBox.Information)
+        msg_box.setStandardButtons(QMessageBox.Ok)
+        
+        # 设置无边框窗口
+        msg_box.setWindowFlags(Qt.Dialog | Qt.FramelessWindowHint)
+        
+        # 设置与主窗口一致的样式
+        msg_box.setStyleSheet("""
+            QMessageBox {
+                background-color: #F6F8FB;
+                color: #23213A;
+                font-family: "Microsoft YaHei", "SimHei", Arial, sans-serif;
+                border-radius: 16px;
+                border: 2px solid #E3E6F5;
+                min-width: 320px;
+                min-height: 160px;
+            }
+            QMessageBox QLabel {
+                color: #23213A;
+                font-size: 14px;
+                font-weight: 500;
+                background-color: transparent;
+                text-align: center;
+                qproperty-alignment: AlignCenter;
+                padding: 15px 20px 10px 20px;
+                margin: 5px 0px;
+            }
+            QMessageBox QPushButton {
+                background-color: #5B5BF6;
+                color: white;
+                border: none;
+                border-radius: 10px;
+                font-size: 12px;
+                font-weight: bold;
+                padding: 8px 20px;
+                min-width: 80px;
+                min-height: 32px;
+                margin: 5px;
+                box-shadow: 0 2px 8px rgba(35,33,58,0.06);
+            }
+            QMessageBox QPushButton:hover {
+                background-color: #CFC3F9;
+                color: #23213A;
+            }
+        """)
+        
+        return msg_box.exec()
+
+
 class ScriptLineWidget(QWidget):
     """单行文稿显示组件"""
     line_selected = Signal(str)  # 发射选中的文本行
@@ -62,7 +174,7 @@ class ScriptLineWidget(QWidget):
         self.add_btn.setFixedSize(60, 28)
         self.add_btn.setStyleSheet("""
             QPushButton {
-                background-color: #52C41A;
+                background-color:#332E4D;
                 color: white;
                 border: none;
                 border-radius: 4px;
@@ -70,13 +182,13 @@ class ScriptLineWidget(QWidget):
                 font-weight: bold;
             }
             QPushButton:hover {
-                background-color: #73D13D;
+                background-color: #5A5187;
             }
             QPushButton:pressed {
-                background-color: #389E0D;
+                background-color:  #EADFED;
             }
             QPushButton:disabled {
-                background-color: #D9D9D9;
+                background-color:  #EADFED;
                 color: #999;
             }
         """)
@@ -121,8 +233,8 @@ class ScriptLineWidget(QWidget):
         """)
         self.line_label.setStyleSheet("""
             QLabel {
-                background-color: #52C41A;
-                color: white;
+                background-color: #E0E0E0;
+                color: #424242;
                 border-radius: 12px;
                 padding: 4px 8px;
                 font-weight: bold;
@@ -147,7 +259,18 @@ class ScriptImportDialog(QDialog):
         self.init_ui()
         self.setWindowTitle("演讲文稿导入")
         self.setFixedSize(800, 600)
-        self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.Dialog)
+        self.setWindowFlags(Qt.Dialog | Qt.FramelessWindowHint)
+        
+        # 设置与主窗口一致的背景样式，添加无边框圆角
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #F6F8FB;
+                color: #23213A;
+                font-family: "Microsoft YaHei", "SimHei", Arial, sans-serif;
+                border-radius: 16px;
+                border: 2px solid #E3E6F5;
+            }
+        """)
     
     def init_ui(self):
         layout = QVBoxLayout(self)
@@ -161,8 +284,9 @@ class ScriptImportDialog(QDialog):
             QLabel {
                 font-size: 18px;
                 font-weight: bold;
-                color: #1890FF;
+                color: #23213A;
                 padding: 8px 0;
+                background-color: transparent;
             }
         """)
         
@@ -171,18 +295,20 @@ class ScriptImportDialog(QDialog):
         self.import_btn.setFixedSize(120, 36)
         self.import_btn.setStyleSheet("""
             QPushButton {
-                background-color: #1890FF;
+                background-color: #5B5BF6;
                 color: white;
                 border: none;
-                border-radius: 6px;
+                border-radius: 12px;
                 font-size: 12px;
                 font-weight: bold;
+                box-shadow: 0 2px 8px rgba(35,33,58,0.06);
             }
             QPushButton:hover {
-                background-color: #40A9FF;
+                background-color: #CFC3F9;
+                color: #23213A;
             }
             QPushButton:pressed {
-                background-color: #096DD9;
+                background-color: #E3E6F5;
             }
         """)
         self.import_btn.clicked.connect(self.import_script_file)
@@ -196,12 +322,14 @@ class ScriptImportDialog(QDialog):
         info_label = QLabel("选择.txt格式的演讲文稿文件，每行内容将作为一个可选的关键词项目显示。")
         info_label.setStyleSheet("""
             QLabel {
-                color: #666;
+                color: #8B8BA7;
                 font-size: 12px;
-                padding: 4px 8px;
-                background-color: #F0F9FF;
-                border-radius: 4px;
-                border-left: 3px solid #1890FF;
+                padding: 8px 16px;
+                background-color: #FFFFFF;
+                border-radius: 12px;
+                border: 1px solid #E3E6F5;
+                border-left: 3px solid #5B5BF6;
+                box-shadow: 0 1px 4px rgba(35,33,58,0.03);
             }
         """)
         layout.addWidget(info_label)
@@ -211,9 +339,10 @@ class ScriptImportDialog(QDialog):
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setStyleSheet("""
             QScrollArea {
-                border: 1px solid #D9D9D9;
-                border-radius: 6px;
-                background-color: #FAFAFA;
+                border: 2px solid #E3E6F5;
+                border-radius: 12px;
+                background-color: #FFFFFF;
+                box-shadow: 0 2px 8px rgba(35,33,58,0.06);
             }
         """)
         
@@ -227,9 +356,10 @@ class ScriptImportDialog(QDialog):
         self.empty_label.setAlignment(Qt.AlignCenter)
         self.empty_label.setStyleSheet("""
             QLabel {
-                color: #999;
+                color: #8B8BA7;
                 font-size: 14px;
                 padding: 40px;
+                background-color: transparent;
             }
         """)
         self.content_layout.addWidget(self.empty_label)
@@ -241,9 +371,10 @@ class ScriptImportDialog(QDialog):
         self.status_label = QLabel("")
         self.status_label.setStyleSheet("""
             QLabel {
-                color: #666;
+                color: #8B8BA7;
                 font-size: 11px;
                 padding: 4px 8px;
+                background-color: transparent;
             }
         """)
         layout.addWidget(self.status_label)
@@ -256,18 +387,20 @@ class ScriptImportDialog(QDialog):
         self.apply_btn.setFixedSize(100, 36)
         self.apply_btn.setStyleSheet("""
             QPushButton {
-                background-color: #52C41A;
+                background-color: #5B5BF6;
                 color: white;
                 border: none;
-                border-radius: 6px;
+                border-radius: 12px;
                 font-size: 12px;
                 font-weight: bold;
+                box-shadow: 0 2px 8px rgba(35,33,58,0.06);
             }
             QPushButton:hover {
-                background-color: #73D13D;
+                background-color: #CFC3F9;
+                color: #23213A;
             }
             QPushButton:pressed {
-                background-color: #389E0D;
+                background-color: #E3E6F5;
             }
         """)
         self.apply_btn.clicked.connect(self.apply_changes)
@@ -277,17 +410,20 @@ class ScriptImportDialog(QDialog):
         self.close_btn.setFixedSize(80, 36)
         self.close_btn.setStyleSheet("""
             QPushButton {
-                background-color: #F5F5F5;
-                color: #333;
-                border: 1px solid #D9D9D9;
-                border-radius: 6px;
+                background-color: #E3E6F5;
+                color: #8B8BA7;
+                border: none;
+                border-radius: 12px;
                 font-size: 12px;
+                font-weight: bold;
+                box-shadow: 0 2px 8px rgba(35,33,58,0.06);
             }
             QPushButton:hover {
-                background-color: #E6E6E6;
+                background-color: #CFC3F9;
+                color: #23213A;
             }
             QPushButton:pressed {
-                background-color: #D9D9D9;
+                background-color: #F6F8FB;
             }
         """)
         self.close_btn.clicked.connect(self.close)
@@ -312,10 +448,10 @@ class ScriptImportDialog(QDialog):
                     content = f.read()
                 
                 self.load_script_content(content)
-                self.status_label.setText(f"✅ 已导入文稿: {os.path.basename(file_path)}")
+                self.status_label.setText(f"√ 已导入文稿: {os.path.basename(file_path)}")
                 
             except Exception as e:
-                QMessageBox.warning(self, "导入错误", f"无法读取文件:\n{str(e)}")
+                CustomMessageBox.warning(self, "导入错误", f"无法读取文件:\n{str(e)}")
                 self.status_label.setText("❌ 文件导入失败")
     
     def load_script_content(self, content):
@@ -368,7 +504,7 @@ class ScriptImportDialog(QDialog):
         
         self.keywords_updated.emit(self.current_keywords)
         self.status_label.setText(f"✅ 已应用更改，当前关键词总数: {len(self.current_keywords)}")
-        QMessageBox.information(self, "应用成功", f"关键词列表已更新\n当前共有 {len(self.current_keywords)} 个关键词")
+        CustomMessageBox.information(self, "应用成功", f"关键词列表已更新\n当前共有 {len(self.current_keywords)} 个关键词")
     
     def save_imported_script(self):
         """保存导入的文稿数据"""
