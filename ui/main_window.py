@@ -50,7 +50,10 @@ class MainWindow(QMainWindow):
         # 文稿跟随状态
         self.script_follow_enabled = False
         self.current_script_position = 0  # 当前演讲到的位置（行号，从0开始）
-        self.imported_script_lines = []  # 导入的文稿行列表        # 创建主窗口部件
+        self.imported_script_lines = []  # 导入的文稿行列表
+        
+        # 存储当前PPT信息
+        self.current_ppt_slide_count = 0        # 创建主窗口部件
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
 
@@ -229,6 +232,9 @@ class MainWindow(QMainWindow):
             img_path = self.export_first_slide_as_image(file_path)
             self.show_ppt_first_slide_preview(img_path)
             
+            # 获取并更新PPT信息
+            self._update_ppt_info_from_file(file_path)
+            
             # 启用AI优化建议按钮
             self.ai_chat_btn.setEnabled(True)
             print(f"✅ AI优化建议按钮已启用，PPT路径: {file_path}")
@@ -239,6 +245,38 @@ class MainWindow(QMainWindow):
             self.open_ppt_btn.setEnabled(True)
             self.open_ppt_btn.show()  # 确保按钮重新显示
             self.handle_error(f"加载PPT预览失败: {str(e)}")
+            
+    def _update_ppt_info_from_file(self, file_path):
+        """从PPT文件获取并更新演示信息"""
+        try:
+            from pptx import Presentation
+            import os
+            
+            # 使用python-pptx库读取PPT文件信息
+            prs = Presentation(file_path)
+            slide_count = len(prs.slides)
+            
+            # 获取文件名
+            file_name = os.path.basename(file_path)
+            
+            # 存储幻灯片总数
+            self.current_ppt_slide_count = slide_count
+            
+            # 更新演示信息显示
+            self.slide_count_value.setText(str(slide_count))
+            self.current_page_value.setText("1/{}".format(slide_count))
+            self.duration_value.setText("00:00:00")  # 重置演示时长
+            
+            # 更新状态
+            self.update_status(f"已加载PPT文件：{file_name}")
+            print(f"✅ PPT信息已更新：{file_name}，共{slide_count}张幻灯片")
+            
+        except Exception as e:
+            print(f"❌ 获取PPT信息失败: {str(e)}")
+            # 如果获取信息失败，设置默认值
+            self.slide_count_value.setText("0")
+            self.current_page_value.setText("0/0")
+            self.duration_value.setText("00:00:00")
             
     def toggle_max_restore(self):
         if self.isMaximized():
@@ -581,22 +619,33 @@ class MainWindow(QMainWindow):
         """演示开始处理"""
         self.start_btn.setText("暂停")
         self.update_status("正在播放PPT...")
+        
+        # 重置当前页码为1
+        if hasattr(self, 'current_ppt_slide_count') and self.current_ppt_slide_count > 0:
+            self.current_page_value.setText(f"1/{self.current_ppt_slide_count}")
+        else:
+            self.current_page_value.setText("1")
 
     def on_presentation_stopped(self):
         """演示停止处理"""
         self.start_btn.setText("播放")
         self.update_status("演示已停止")
+        
+        # 重置演示时长
+        self.duration_value.setText("00:00:00")
 
     def on_slide_changed(self, slide_number: int):
         """幻灯片切换处理"""
-        if hasattr(self, 'current_ppt_content') and self.current_ppt_content:
-            total_slides = self.current_ppt_content.get('total_slides', 0)
+        # 使用存储的幻灯片总数
+        if hasattr(self, 'current_ppt_slide_count') and self.current_ppt_slide_count > 0:
+            total_slides = self.current_ppt_slide_count
             self.current_page_value.setText(f"{slide_number}/{total_slides}")
             # 同步信息到悬浮窗
             if (hasattr(self, 'floating_window') and self.floating_window and 
                 hasattr(self.floating_window, 'update_slide_info')):
                 self.floating_window.update_slide_info(slide_number, total_slides)
         else:
+            # 如果没有幻灯片总数信息，只显示当前页码
             self.current_page_value.setText(f"{slide_number}")
             if (hasattr(self, 'floating_window') and self.floating_window and 
                 hasattr(self.floating_window, 'update_slide_info')):
