@@ -481,8 +481,8 @@ class PPTFloatingWindow(QWidget):
         margin = 20  # 距离屏幕边缘的边距
         
         # 计算右下角位置
-        x = screen.width() - window_width - margin
-        y = screen.height() - window_height - margin - 60  # 减去任务栏高度
+        x = (screen.width() - window_width) // 2
+        y = (screen.height() - window_height) // 2
         
         self.move(x, y)
 
