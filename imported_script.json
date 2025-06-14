@@ -1,36 +1,36 @@
 {
   "title": "导入的演讲文稿",
-  "import_time": "2025-06-14 15:47:41",
+  "import_time": "2025-06-14 23:10:25",
   "total_lines": 38,
   "lines": [
     {
       "line_number": 1,
       "text": "今天我要为大家演示的是我们的人机交互课程项目。",
-      "is_added_to_keywords": false,
+      "is_added_to_keywords": true,
       "character_count": 23
     },
     {
       "line_number": 2,
       "text": "这个项目主要解决演讲过程中的手势控制和语音控制问题。",
-      "is_added_to_keywords": false,
+      "is_added_to_keywords": true,
       "character_count": 26
     },
     {
       "line_number": 3,
       "text": "首先，让我们来看看项目的背景和意义。",
-      "is_added_to_keywords": false,
+      "is_added_to_keywords": true,
       "character_count": 18
     },
     {
       "line_number": 4,
       "text": "在传统的PPT演示中，演讲者需要频繁地操作鼠标或键盘。",
-      "is_added_to_keywords": false,
+      "is_added_to_keywords": true,
       "character_count": 27
     },
     {
       "line_number": 5,
       "text": "这往往会打断演讲的流畅性，影响与观众的互动。",
-      "is_added_to_keywords": false,
+      "is_added_to_keywords": true,
       "character_count": 22
     },
     {
@@ -42,7 +42,7 @@
     {
       "line_number": 7,
       "text": "同时，我们还集成了语音识别功能，提供多模态的交互方式。",
-      "is_added_to_keywords": true,
+      "is_added_to_keywords": false,
       "character_count": 27
     },
     {
@@ -210,7 +210,7 @@
     {
       "line_number": 35,
       "text": "它不仅提升了演讲的效率，也增强了互动体验。",
-      "is_added_to_keywords": false,
+      "is_added_to_keywords": true,
       "character_count": 21
     },
     {

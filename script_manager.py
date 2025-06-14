@@ -154,8 +154,7 @@ class ScriptLineWidget(QWidget):
         """)
         self.line_label.setAlignment(Qt.AlignCenter)
         self.line_label.setFixedSize(40, 24)
-        
-        # 文本内容标签
+          # 文本内容标签
         self.content_label = QLabel(self.text)
         self.content_label.setWordWrap(True)
         self.content_label.setStyleSheet("""
@@ -163,7 +162,9 @@ class ScriptLineWidget(QWidget):
                 color: #333;
                 font-size: 13px;
                 padding: 4px;
-                background-color: #F5F5F5;
+                background-color: #FFFFFF;
+                border: 1px solid #E8E8E8;
+                border-radius: 4px;
             }
         """)
         
@@ -195,11 +196,10 @@ class ScriptLineWidget(QWidget):
         layout.addWidget(self.line_label)
         layout.addWidget(self.content_label, 1)
         layout.addWidget(self.add_btn)
-        
-        # 设置整体样式
+          # 设置整体样式
         self.setStyleSheet("""
             ScriptLineWidget {
-                background-color: white;
+                background-color: #FFFFFF;
                 border: 1px solid #E8E8E8;
                 border-radius: 6px;
                 margin: 2px;
@@ -207,6 +207,9 @@ class ScriptLineWidget(QWidget):
             ScriptLineWidget:hover {
                 border-color: #1890FF;
                 background-color: #F0F9FF;
+            }
+            ScriptLineWidget QWidget {
+                background-color: #FFFFFF;
             }
         """)
     
@@ -258,8 +261,7 @@ class ScriptImportDialog(QDialog):
         self.setWindowTitle("演讲文稿导入")
         self.setFixedSize(800, 600)
         self.setWindowFlags(Qt.Dialog | Qt.FramelessWindowHint)
-        
-        # 设置与主窗口一致的背景样式，添加无边框圆角
+          # 设置与主窗口一致的背景样式，添加无边框圆角
         self.setStyleSheet("""
             QDialog {
                 background-color: #F6F8FB;
@@ -267,6 +269,26 @@ class ScriptImportDialog(QDialog):
                 font-family: "Microsoft YaHei", "SimHei", Arial, sans-serif;
                 border-radius: 16px;
                 border: 2px solid #E3E6F5;
+            }
+            QWidget {
+                background-color: #FFFFFF;
+                color: #23213A;
+            }
+            QLabel {
+                background-color: transparent;
+                color: #23213A;
+            }
+            QTextEdit {
+                background-color: #FFFFFF;
+                color: #23213A;
+                border: 1px solid #E3E6F5;
+                border-radius: 8px;
+            }
+            QLineEdit {
+                background-color: #FFFFFF;
+                color: #23213A;
+                border: 1px solid #E3E6F5;
+                border-radius: 8px;
             }
         """)
     
@@ -329,8 +351,7 @@ class ScriptImportDialog(QDialog):
             }
         """)
         layout.addWidget(info_label)
-        
-        # 文稿显示区域
+          # 文稿显示区域
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setStyleSheet("""
@@ -339,9 +360,15 @@ class ScriptImportDialog(QDialog):
                 border-radius: 12px;
                 background-color: #FFFFFF;
             }
-        """)
+                    """)
         
         self.content_widget = QWidget()
+        self.content_widget.setStyleSheet("""
+            QWidget {
+                background-color: #FFFFFF;
+                color: #23213A;
+            }
+        """)
         self.content_layout = QVBoxLayout(self.content_widget)
         self.content_layout.setContentsMargins(10, 10, 10, 10)
         self.content_layout.setSpacing(6)
@@ -425,17 +452,44 @@ class ScriptImportDialog(QDialog):
         button_layout.addWidget(self.apply_btn)
         button_layout.addWidget(self.close_btn)
         layout.addLayout(button_layout)
-    
+        
     def import_script_file(self):
         """导入文稿文件"""
-        file_path, _ = QFileDialog.getOpenFileName(
-            self,
-            "选择演讲文稿文件",
-            "",
-            "文本文件 (*.txt);;所有文件 (*.*)"
-        )
+        # 创建文件对话框并设置样式
+        file_dialog = QFileDialog(self)
+        file_dialog.setWindowTitle("选择演讲文稿文件")
+        file_dialog.setNameFilter("文本文件 (*.txt);;所有文件 (*.*)")
+        file_dialog.setFileMode(QFileDialog.ExistingFile)
         
-        if file_path and os.path.exists(file_path):
+        # 设置文件对话框样式，确保背景为白色
+        file_dialog.setStyleSheet("""
+            QFileDialog {
+                background-color: #FFFFFF;
+                color: #23213A;
+            }
+            QFileDialog QWidget {
+                background-color: #FFFFFF;
+                color: #23213A;
+            }
+            QFileDialog QListView {
+                background-color: #FFFFFF;
+                color: #23213A;
+            }
+            QFileDialog QTreeView {
+                background-color: #FFFFFF;
+                color: #23213A;
+            }
+            QFileDialog QLineEdit {
+                background-color: #FFFFFF;
+                color: #23213A;
+                border: 1px solid #E3E6F5;
+            }
+        """)
+        
+        if file_dialog.exec() == QFileDialog.Accepted:
+            file_paths = file_dialog.selectedFiles()
+            if file_paths:
+                file_path = file_paths[0]
             try:
                 with open(file_path, 'r', encoding='utf-8') as f:
                     content = f.read()
