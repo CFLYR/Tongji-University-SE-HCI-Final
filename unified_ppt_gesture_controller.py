@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+ 
 """
 统一PPT手势识别播放器
 Unified PPT Gesture Recognition Controller
@@ -426,7 +426,7 @@ class UnifiedPPTGestureController:
                 json.dump(configs_dict, f, ensure_ascii=False, indent=2)
             print(f" 配置已保存到: {self.config_file}")
         except Exception as e:
-            print(f"❌ 保存配置失败: {e}")
+            print(" 保存配置失败:", e)
 
     def process_frame(self, img):
         """处理视频帧"""
@@ -653,8 +653,8 @@ class UnifiedPPTGestureController:
                 self.ppt_controller.execute_action(action)
                 
         except Exception as e:
-            print(f"❌ 执行动作失败 ({action_str}): {e}")
-    
+            print("执行自定义动作时出错:", e)
+
     def toggle_speech_scroll(self):
         """切换演讲稿滚动显示"""
         self.show_speech_scroll = not self.show_speech_scroll
@@ -662,12 +662,12 @@ class UnifiedPPTGestureController:
         if self.show_speech_scroll:
             if self.speech_display is None:
                 self.speech_display = SpeechScrollDisplay(self.speech_manager)
-            print("📺 演讲稿滚动显示已开启")            # 在新线程中启动显示窗口
+            # print(            # 在新线程中启动显示窗口
             import threading
             display_thread = threading.Thread(target=self.speech_display.show_display, daemon=True)
             display_thread.start()
         else:
-            print("📺 演讲稿滚动显示已关闭")
+            # print(
             if self.speech_display:
                 cv.destroyWindow(self.speech_display.display_window_name)
     
@@ -675,7 +675,7 @@ class UnifiedPPTGestureController:
         """演讲稿下一段"""
         if self.speech_manager.manually_navigate("next"):
             current_slide = self.speech_manager.get_current_slide_number()
-            print(f"📍 演讲稿导航到下一段，建议切换到幻灯片 {current_slide}")
+            # print(
             # 可以选择自动切换幻灯片
             # self.ppt_controller.jump_to_slide(current_slide)
     
@@ -683,7 +683,7 @@ class UnifiedPPTGestureController:
         """演讲稿上一段"""
         if self.speech_manager.manually_navigate("prev"):
             current_slide = self.speech_manager.get_current_slide_number()
-            print(f"📍 演讲稿导航到上一段，建议切换到幻灯片 {current_slide}")
+            # print(
             # 可以选择自动切换幻灯片
             # self.ppt_controller.jump_to_slide(current_slide)
     
@@ -691,7 +691,7 @@ class UnifiedPPTGestureController:
         """根据输入文本匹配演讲稿"""
         if self.speech_manager.match_input_text(input_text):
             current_slide = self.speech_manager.get_current_slide_number()
-            print(f"🎯 演讲稿匹配成功，建议切换到幻灯片 {current_slide}")
+            # print(
             # 如果启用自动滚动，可以自动切换幻灯片
             if self.speech_manager.auto_scroll_enabled:
                 self.ppt_controller.jump_to_slide(current_slide)
@@ -716,17 +716,17 @@ class UnifiedPPTGestureController:
                     continue
                 
                 # 执行文本匹配
-                print(f"🔍 正在匹配: {user_input}")
+                # print(
                 self.match_speech_text(user_input)
                 
                 # 显示当前演讲稿状态
                 current_segment = self.speech_manager.segments[self.speech_manager.current_index]
-                print(f"📍 当前段落 {self.speech_manager.current_index + 1}: {current_segment.text[:50]}...")
+                # print(
                 
         except KeyboardInterrupt:
             print("\n用户中断文本输入")
         except Exception as e:
-            print(f"❌ 文本输入处理错误: {e}")
+            print("处理文本输入时出错:", e)
         
         # 重新创建OpenCV窗口
         print("返回手势识别模式...")

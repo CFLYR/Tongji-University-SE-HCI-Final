@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+ 
 """
 演讲稿文本管理器
 Speech Text Manager
@@ -164,12 +164,12 @@ class SpeechTextManager:
                 with open(self.config_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                     self.load_speech_from_data(data)
-                print(f"✅ 演讲稿配置已从 {self.config_file} 加载")
+                # print(
             except Exception as e:
-                print(f"❌ 加载演讲稿配置失败: {e}")
+                # print(
                 self.create_default_speech()
         else:
-            print("📝 未找到演讲稿配置文件，创建默认配置")
+            # print(
             self.create_default_speech()
 
     def create_default_speech(self):
@@ -233,16 +233,16 @@ class SpeechTextManager:
         try:
             with open(self.config_file, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
-            print(f"✅ 演讲稿配置已保存到 {self.config_file}")
+            # print(
         except Exception as e:
-            print(f"❌ 保存演讲稿配置失败: {e}")
+            print("❌ 保存演讲稿配置失败:", e)
 
     def match_input_text(self, input_text: str) -> tuple:
         """根据输入文本匹配演讲稿位置，返回(匹配成功, 片段文本, 置信度)"""
         if not input_text.strip():
             return False, "", 0.0
 
-        print(f"🔍 匹配输入文本: {input_text}")
+        # print(
 
         # 找到最佳匹配
         best_index, confidence = self.matcher.find_best_match(input_text, self.segments)
@@ -257,14 +257,14 @@ class SpeechTextManager:
                 segment.is_current = (i == best_index)
                 segment.confidence = confidence if i == best_index else 0.0
 
-            print(f"✅ 匹配成功! 片段 {best_index + 1}, 置信度: {confidence:.2f}")
-            print(f"📍 当前内容: {self.segments[best_index].text[:50]}...")
+            # print(
+            # print(
 
             # 返回匹配结果：找到匹配、片段文本、置信度
             return True, self.segments[best_index].text, confidence
 
-        else:
-            print(f"❌ 未找到匹配的演讲内容 (输入: {input_text[:30]}...)")
+        # else:
+        #     # print(
 
         # 返回未匹配结果
         return False, "", 0.0
@@ -326,7 +326,7 @@ class SpeechTextManager:
         """切换自动滚动状态"""
         self.auto_scroll_enabled = not self.auto_scroll_enabled
         status = "开启" if self.auto_scroll_enabled else "关闭"
-        print(f"🔄 自动滚动已{status}")
+        # print(
         return self.auto_scroll_enabled
 
 

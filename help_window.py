@@ -1,5 +1,5 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+  
+ 
 """
 帮助窗口模块
 提供应用程序的基本教程和使用说明
@@ -51,7 +51,7 @@ class HelpWindow(QDialog):
         
         # 设置窗口位置
         self.move(x, y)
-        print(f"📍 帮助窗口已居中显示: 位置({x}, {y}), 尺寸({self.width()}, {self.height()})")
+        # print(
     
     def init_ui(self):
         """初始化用户界面"""

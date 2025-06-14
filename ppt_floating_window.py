@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+ 
 """
 PPT悬浮窗 - 集成录像功能
 PPT Floating Window with Recording Features
@@ -37,7 +37,7 @@ try:
 
     RECORDING_AVAILABLE = True
 except ImportError:
-    print("⚠️ 录像功能模块未找到，将禁用录像功能")
+    # print(
     RECORDING_AVAILABLE = False
 
 # 导入手势控制模块
@@ -46,7 +46,7 @@ try:
 
     GESTURE_AVAILABLE = True
 except ImportError:
-    print("⚠️ 手势控制模块未找到，将禁用手势控制功能")
+    # print(
     GESTURE_AVAILABLE = False
 
 
@@ -393,14 +393,14 @@ class RecordingStatusWidget(QWidget):
         self.presentation_duration = 0
         self.status_indicator.setStyleSheet("color: #52C41A; font-size: 12px;")  # 绿色表示演示进行中
         self.presentation_timer.start(1000)  # 每秒更新
-        print("🕐 演示计时开始")
+        # print(
 
     def stop_presentation_timing(self):
         """停止演示计时"""
         self.is_presentation_timing = False
         self.status_indicator.setStyleSheet("color: #888; font-size: 12px;")  # 恢复灰色
         self.presentation_timer.stop()
-        print("🕐 演示计时停止")
+        # print(
 
     def update_presentation_duration(self):
         """更新演示时长"""
@@ -415,7 +415,7 @@ class RecordingStatusWidget(QWidget):
         """重置演示计时"""
         self.presentation_duration = 0
         self.duration_label.setText("00:00:00")
-        print("🕐 演示计时重置")
+        # print(
 
 
 class PPTFloatingWindow(QWidget):
@@ -791,11 +791,11 @@ class PPTFloatingWindow(QWidget):
             self.subtitle_display.setFixedHeight(78)
             self.subtitle_display.current_label.setText("无字幕")
             
-            print("✅ 初始布局已修复")
+            # print(
             
         except Exception as e:
-            print(f"⚠️ 修复初始布局时出错: {e}")
-    
+            print(f"修复初始布局时出错: {e}")
+
     def _delayed_layout_fix(self):
         """延迟布局修复，在UI完全初始化后执行"""
         try:
@@ -815,31 +815,31 @@ class PPTFloatingWindow(QWidget):
             # 强制重绘
             self.repaint()
             
-            print("✅ 延迟布局修复完成")
+            # print(
             
         except Exception as e:
-            print(f"⚠️ 延迟布局修复时出错: {e}")
-    
+            print(f"修复初始布局时出错: {e}")
+
     def toggle_start_functions(self):
         """统一控制函数：根据当前运行状态和主窗口复选框状态决定切换功能"""
-        print("🔄 DEBUG: toggle_start_functions 被调用")
+        # print(
         
         # 标记用户已经点击过开始按钮
         self.has_started_once = True
         
         if not self.main_controller:
-            print("❌ 主控制器未设置，无法检查复选框状态")
+            # print(
             return
         
         # 检查当前运行状态
         voice_running = RTVTT.is_voice_recognition_running()
         gesture_running = self.is_gesture_active
         
-        print(f"🔍 DEBUG: 当前运行状态 - 语音识别: {voice_running}, 手势识别: {gesture_running}")
+        # print(
         
         # 如果有任何功能正在运行，先停止所有功能
         if voice_running or gesture_running:
-            print("⏹️ 检测到功能正在运行，停止所有功能")
+            # print(
             if voice_running:
                 self.stop_voice_recognition()
             if gesture_running:
@@ -874,13 +874,13 @@ class PPTFloatingWindow(QWidget):
                         background: #0F4FDD;
                     }
                 """)
-                print("✅ 所有功能已停止，按钮已恢复为开始状态")
+                # print(
             else:
-                print(f"⚠️ 部分功能仍在运行 - 语音: {voice_still_running}, 手势: {gesture_still_running}")
+                print("停止功能后仍有功能在运行，可能是状态更新延迟")
             return
         
         # 如果没有功能运行，根据主窗口复选框状态启动相应功能
-        print("▶️ 没有功能运行，根据主窗口设置启动功能")
+        # print(
         
         # 尝试获取主窗口实例
         main_window = None
@@ -895,13 +895,13 @@ class PPTFloatingWindow(QWidget):
                         break
             
             if not main_window:
-                print("❌ 无法找到主窗口，默认启用语音识别")
+                # print(
                 self.start_voice_recognition()
                 self._update_button_state("voice")
                 return
                 
         except Exception as e:
-            print(f"❌ 查找主窗口时出错: {e}，默认启用语音识别")
+            # print(
             self.start_voice_recognition()
             self._update_button_state("voice")
             return
@@ -910,7 +910,7 @@ class PPTFloatingWindow(QWidget):
         voice_enabled = main_window.voice_checkbox.isChecked() if hasattr(main_window, 'voice_checkbox') else False
         gesture_enabled = main_window.gesture_checkbox.isChecked() if hasattr(main_window, 'gesture_checkbox') else False
         
-        print(f"🔍 DEBUG: 主窗口设置 - 语音识别: {voice_enabled}, 手势识别: {gesture_enabled}")
+        # print(
         
         # 开始演示计时
         if hasattr(self, 'recording_status'):
@@ -918,25 +918,25 @@ class PPTFloatingWindow(QWidget):
         
         # 根据复选框状态启动相应功能
         if voice_enabled and gesture_enabled:
-            print("🎤🖐️ 启动语音识别和手势控制")
+            # print(
             self.start_voice_recognition()
             self.start_gesture_control()
             self._update_button_state("both")
             
         elif voice_enabled:
-            print("🎤 启动语音识别")
+            # print(
             self.start_voice_recognition()
             self._update_button_state("voice")
             
         elif gesture_enabled:
-            print("🖐️ 启动手势控制")
+            # print(
             self.start_gesture_control()
             self._update_button_state("gesture")
             
         else:
-            print("❌ 没有启用任何功能")
+            # print(
             self._update_button_state("none")
-            print("⚠️ 请在主窗口勾选'启用语音识别'或'启用手势识别'复选框")
+            # print(
     
     def _update_button_state(self, mode):
         """根据模式更新按钮状态"""
@@ -1002,32 +1002,32 @@ class PPTFloatingWindow(QWidget):
             self._set_disabled_button_style()  
     def start_voice_recognition(self):
         """启动语音识别"""
-        print("🎤 DEBUG: start_voice_recognition 被调用")
+        # print(
         
         # 检查语音识别功能是否被主窗口启用
         if not getattr(self, 'voice_recognition_enabled', False):
             
-            print("❌ 语音识别功能未在主窗口启用")
+            # print(
             return
         
         try:
             if not self.main_controller:
-                print("❌ 主控制器未设置")
+                # print(
                 return
             
             # 【新增】清空字幕显示，防止显示旧内容
             if hasattr(self, 'subtitle_display'):
                 self.subtitle_display.clear_subtitles()
-                print("🧹 字幕显示已清空，防止残留旧内容")
+                # print(
             
             # 使用传递过来的关键词启动语音识别
             keywords = getattr(self, 'voice_keywords', ["下一页"])
-            print(f"🔧 使用关键词启动语音识别: {keywords}")
+            # print(
             
             # 【关键修复】直接设置关键词到语音识别器，然后启动
             import RealTimeVoiceToText as RTVTT
             RTVTT.set_voice_keywords(keywords, "上一页")
-            print("✅ 关键词已直接设置到语音识别器")
+            # print(
             
             # 通过主控制器启动语音识别，传递关键词
             self.main_controller.toggle_voice_recognition(True, keywords)
@@ -1035,45 +1035,44 @@ class PPTFloatingWindow(QWidget):
             if hasattr(self, 'voice_subtitle_timer'):
                 if self.subtitle_display_enabled:
                     self.voice_subtitle_timer.start(500)  # 每500ms更新一次字幕
-                    print("⏰ 字幕更新定时器已启动 (字幕显示已启用)")
                 else:
-                    print("⚠️ 字幕显示未启用，字幕定时器未启动")
+                    print("语音字幕更新定时器未启用")
             else:
-                print("❌ DEBUG: voice_subtitle_timer 不存在")
+                print("语音字幕更新定时器未初始化")
             
-            print("✅ 语音识别已启动")
+            # print(
             
         except Exception as e:
-            print(f"❌ 启动语音识别失败: {e}")
+            # print(
             import traceback
             traceback.print_exc()
     def stop_voice_recognition(self):
         """停止语音识别"""
-        print("🎤 DEBUG: stop_voice_recognition 被调用")      
+        # print(      
         try:
             if not self.main_controller:
-                print("❌ 主控制器未设置")
+                # print(
                 return
             
             # 通过主控制器停止语音识别
-            print("🔧 通过主控制器停止语音识别...")
+            # print(
             self.main_controller.toggle_voice_recognition(False, [])
             
             # 停止字幕更新定时器
             if hasattr(self, 'voice_subtitle_timer'):
                 self.voice_subtitle_timer.stop()
-                print("⏰ 字幕更新定时器已停止")
+                # print(
             
-            print("✅ 语音识别已停止")
+            # print(
             
         except Exception as e:
-            print(f"❌ 停止语音识别失败: {e}")
+            # print(
             import traceback
             traceback.print_exc()
 
     def toggle_voice_recognition(self):
         """切换语音识别状态（保持兼容性）"""
-        print("🎤 DEBUG: toggle_voice_recognition 被调用（兼容模式）")        # 检查语音识别是否在运行
+        # print(        # 检查语音识别是否在运行
         if not RTVTT.is_voice_recognition_running():
             self.start_voice_recognition()
             # 更新按钮文本（仅在兼容模式下）
@@ -1101,7 +1100,7 @@ class PPTFloatingWindow(QWidget):
             # 目前主要用于内部跟踪
             self.current_slide = current_slide
             self.total_slides = total_slides
-            print(f"📊 悬浮窗幻灯片信息更新: {current_slide}/{total_slides}")
+            # print(
         except Exception as e:
             print(f"更新悬浮窗幻灯片信息失败: {e}")
 
@@ -1124,7 +1123,7 @@ class PPTFloatingWindow(QWidget):
         # 滚动到顶部
         if hasattr(self, 'script_scroll_area'):
             self.script_scroll_area.verticalScrollBar().setValue(0)
-            print(f"📜 文稿文本已设置，预计高度: {estimated_height}px, 行数: {line_count}")
+            # print(
     
     def scroll_to_line(self, line_number: int):
         """滚动到指定行号"""
@@ -1139,7 +1138,7 @@ class PPTFloatingWindow(QWidget):
             
             # 滚动到目标位置
             self.script_scroll_area.verticalScrollBar().setValue(target_position)
-            print(f"📜 文稿滚动到第 {line_number} 行 (位置: {target_position}px, 最大: {max_value}px)")
+            # print(
     
     def highlight_script_line(self, line_number: int, text: str):
         """高亮显示匹配的文稿行"""
@@ -1162,11 +1161,11 @@ class PPTFloatingWindow(QWidget):
             # 滚动到该行
             self.scroll_to_line(line_number)
             
-            print(f"📍 高亮显示文稿第 {line_number} 行")
+            # print(
             
         except Exception as e:
-            print(f"❌ 高亮文稿行失败: {e}")
-    
+            print(f"高亮显示文稿行时出错: {e}")
+
     def test_scroll_functionality(self):
         """测试滚动功能（用于调试）"""
         test_text = "📄 测试文稿滚动功能\n" + "=" * 30 + "\n\n"
@@ -1174,7 +1173,7 @@ class PPTFloatingWindow(QWidget):
             test_text += f"{i:02d}. 这是第{i}行测试文稿内容，用于验证滚动功能是否正常工作。\n"
         
         self.set_script_text(test_text)
-        print("📜 测试文稿已加载，请检查滚动功能")
+        # print(
     
     def load_imported_script(self):
         """加载导入的文稿并显示（支持滚动显示更多内容）"""
@@ -1222,20 +1221,20 @@ class PPTFloatingWindow(QWidget):
             if hasattr(self, 'script_scroll_area'):
                 self.script_scroll_area.updateGeometry()
             
-            print(f"📜 文稿加载完成，显示行数: {total_display_lines}, 预计高度: {estimated_height}px")
+            # print(
             
-            print(f"✅ 悬浮窗已加载文稿: {title} (共{total_lines}行)")
+            # print(
             return True
             
         except Exception as e:
-            print(f"❌ 悬浮窗加载文稿失败: {e}")
+            # print(
             self.text_label.setText("📄 文稿展示区\n文稿加载失败")
             return False
 
     def toggle_recording(self):
         """切换录制状态"""
         if not RECORDING_AVAILABLE:
-            print("❌ 录像功能不可用")
+            # print(
             return
 
         if not self.recording_assistant.is_recording:
@@ -1252,7 +1251,7 @@ class PPTFloatingWindow(QWidget):
         self.recording_assistant.config = self.recording_config
 
         # 调试信息
-        print(f"🔍 DEBUG: 录制配置 - record_floating_window = {self.recording_config.record_floating_window}")
+        # print(
 
         # 传递悬浮窗对象到录制助手，用于悬浮窗区域排除
         if self.recording_assistant.start_recording(floating_window=self):
@@ -1282,9 +1281,9 @@ class PPTFloatingWindow(QWidget):
                 self.subtitle_timer.start(1000)
 
             self.recording_started.emit()
-            print("🎬 录制已开始")
+            # print(
         else:
-            print("❌ 录制启动失败")
+            print("录制助手启动失败，请检查配置或权限。")
 
     def stop_recording(self):
         """停止录制"""
@@ -1323,7 +1322,7 @@ class PPTFloatingWindow(QWidget):
                 self.recording_assistant.current_session_id
             )
             self.recording_stopped.emit(session_dir)     
-        print("🎬 录制已停止")
+        # print(
 
     def update_subtitle_display(self):
         """更新字幕显示"""
@@ -1356,58 +1355,59 @@ class PPTFloatingWindow(QWidget):
             
             # 详细调试信息输出
             if current_text and current_text.strip():
-                print(f"🎤 实时识别中: {current_text}")
-                
+                #print(f"当前识别文本: {current_text}")
+                x=1
+
             if last_complete_sentence and last_complete_sentence.strip():
-                print(f"✅ 完整句子: {last_complete_sentence}")
+                # print(
                 
                 # 通知主窗口进行文稿匹配（如果有主窗口引用）
                 if hasattr(self.main_controller, 'main_window'):
                     try:
                         self.main_controller.main_window.process_complete_sentence(last_complete_sentence)
                     except Exception as e:
-                        print(f"⚠️ 文稿匹配处理失败: {e}")
-            
+                        print(f"处理完成句子时出错: {e}")
+
             # 优先显示当前正在识别的文本，如果没有则显示最后完成的句子
             display_text = ""
             if current_text and current_text.strip():
                 display_text = f"🎤 {current_text}"  # 正在识别的文本加上麦克风图标
-                print(f"📺 悬浮窗显示 (正在识别): {current_text}")
+                # print(
             elif last_complete_sentence and last_complete_sentence.strip():
                 display_text = f"✅ {last_complete_sentence}"  # 完成的句子加上对勾图标
-                print(f"📺 悬浮窗显示 (完整句子): {last_complete_sentence}")
+                # print(
             
             if display_text and hasattr(self, 'subtitle_display'):
                 self.subtitle_display.update_subtitle(display_text)
                 # 发射字幕更新信号到主窗口
                 self.subtitle_updated.emit(display_text)
-                print(f"📝 字幕更新信号已发送: {display_text}")
+                # print(
             else:
                 # 没有字幕内容时的调试信息
                 if not current_text and not last_complete_sentence:
                     pass  # 不输出过多的空白信息
                 else:
-                    print("📺 悬浮窗: 无字幕内容显示")
-                    
+                    print(f"当前识别文本: {current_text}")
+
         except Exception as e:
-            print(f"❌ 更新语音字幕失败: {e}")
+            # print(
             import traceback
             traceback.print_exc()
 
     def show_config_dialog(self):
         """显示配置对话框"""
         if not RECORDING_AVAILABLE:
-            print("❌ 录像功能不可用")
+            # print(
             return
 
         dialog = RecordingConfigDialog(self, self.recording_config)
         if dialog.exec() == QDialog.Accepted:
             self.recording_config = dialog.get_config()
-            print("📝 录制配置已更新")
+            # print(
 
     def previous_slide(self):
         """上一张幻灯片"""
-        print("🔙 执行：上一张幻灯片")
+        # print(
         try:
             # 先尝试激活PPT窗口
             self._activate_ppt_window()
@@ -1417,16 +1417,16 @@ class PPTFloatingWindow(QWidget):
             pt.FAILSAFE = False
             pt.PAUSE = 0.1
             pt.press('left')  # 发送左箭头键（上一页）
-            print("✅ 成功发送按键：left 箭头（上一页）")
+            # print(
 
         except Exception as e:
-            print(f"❌ 上一张幻灯片失败: {e}")
+            # print(
             import traceback
             traceback.print_exc()
 
     def next_slide(self):
         """下一张幻灯片"""
-        print("🔜 执行：下一张幻灯片")
+        # print(
         try:
             # 先尝试激活PPT窗口
             self._activate_ppt_window()
@@ -1436,10 +1436,10 @@ class PPTFloatingWindow(QWidget):
             pt.FAILSAFE = False
             pt.PAUSE = 0.1
             pt.press('right')  # 发送右箭头键（下一页）
-            print("✅ 成功发送按键：right 箭头（下一页）")
+            # print(
 
         except Exception as e:
-            print(f"❌ 下一张幻灯片失败: {e}")
+            # print(
             import traceback
             traceback.print_exc()
 
@@ -1474,30 +1474,30 @@ class PPTFloatingWindow(QWidget):
                     win32gui.SetForegroundWindow(hwnd)
                     win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
                     time.sleep(0.2)  # 等待窗口激活
-                    print("✅ PPT窗口已激活")
+                    # print(
                     return True
                 else:
-                    print("⚠️ 未找到PPT窗口")
+                    print("未找到PowerPoint窗口")
 
             except ImportError:
-                print("⚠️ Windows API不可用，使用备用方法")
+                print("未找到win32gui模块，无法激活PPT窗口")
 
             # 备用方法：使用Alt+Tab切换窗口
             import pyautogui as pt
             import time
             pt.hotkey('alt', 'tab')
             time.sleep(0.2)
-            print("🔄 尝试切换到PPT窗口")
+            # print(
             return True
 
         except Exception as e:
-            print(f"❌ 激活PPT窗口失败: {e}")
+            # print(
             return False
 
     def toggle_gesture_control(self):
         """切换手势控制状态"""
         if not GESTURE_AVAILABLE:
-            print("❌ 手势控制功能不可用")
+            # print(
             return
         if self.is_gesture_active:
             self.stop_gesture_control()
@@ -1512,7 +1512,7 @@ class PPTFloatingWindow(QWidget):
         # 检查主窗口的手势识别状态
         if self.main_controller and hasattr(self.main_controller, 'gesture_controller'):
             if not getattr(self.main_controller.gesture_controller, 'running', False):
-                print("❌ 手势识别未在主窗口启用，请先在主窗口勾选'启用手势识别'")
+                # print(
                 return
 
         try:
@@ -1524,10 +1524,10 @@ class PPTFloatingWindow(QWidget):
             self.is_gesture_active = True
             self.gesture_thread.start()
 
-            print("🖐️ 手势控制已启动")
+            # print(
 
         except Exception as e:
-            print(f"❌ 启动手势控制失败: {e}")
+            # print(
             self.is_gesture_active = False
 
     def _setup_ppt_presentation_state(self):
@@ -1541,11 +1541,11 @@ class PPTFloatingWindow(QWidget):
 
             # 直接设置为活跃状态，允许按钮控制
             ppt_controller.is_presentation_active = True
-            print("✅ PPT控制状态已设置为活跃，按钮控制可用")
-            print("📢 提示：请确保PPT已在演示模式（按F5进入），然后可以使用手势和按钮控制")
+            # print(
+            #print("📢 提示：请确保PPT已在演示模式（按F5进入），然后可以使用手势和按钮控制")
 
         except Exception as e:
-            print(f"⚠️ 设置PPT状态时出错: {e}")
+            # print(
             # 即使出错，也允许尝试控制
             if self.gesture_controller:
                 self.gesture_controller.ppt_controller.is_presentation_active = True
@@ -1553,39 +1553,39 @@ class PPTFloatingWindow(QWidget):
     def stop_gesture_control(self):
         """停止手势控制（仅核心功能）"""
         if not GESTURE_AVAILABLE:
-            print("❌ 手势控制功能不可用")
+            # print(
             return
             
         if not self.is_gesture_active:
-            print("ℹ️ 手势控制未在运行")
+            # print(
             return
 
         try:
-            print("🛑 正在停止手势控制...")
+            # print(
             
             # 停止手势控制
             self.is_gesture_active = False
             if self.gesture_controller:
                 self.gesture_controller.running = False
-                print("🔧 已设置手势控制器停止标志")
+                # print(
 
             # 等待线程结束
             if self.gesture_thread and self.gesture_thread.is_alive():
-                print("⏳ 等待手势控制线程结束...")
+                #print("⏳ 等待手势控制线程结束...")
                 self.gesture_thread.join(timeout=2.0)  # 增加超时时间
-                if self.gesture_thread.is_alive():
-                    print("⚠️ 手势控制线程未能及时结束，但已标记为停止")
-                else:
-                    print("✅ 手势控制线程已结束")
+                # if self.gesture_thread.is_alive():
+                #     #print("⏳ 手势控制线程未能在规定时间内结束")
+                # else:
+                #     #print("✅ 手势控制线程已结束")
 
             # 清理线程引用
             self.gesture_thread = None
-            print("🧹 已清理手势控制线程引用")
+            # print(
 
-            print("🛑 手势控制已完全停止")
+            # print(
 
         except Exception as e:
-            print(f"❌ 停止手势控制失败: {e}")
+            # print(
             # 即使出错，也要确保状态正确
             self.is_gesture_active = False
             if self.gesture_controller:
@@ -1600,7 +1600,7 @@ class PPTFloatingWindow(QWidget):
                 # 运行手势控制（这会阻塞直到停止）
                 self.gesture_controller.run()
         except Exception as e:
-            print(f"❌ 手势控制运行出错: {e}")
+            print("手势控制运行时出错:", e)
         finally:
             # 确保状态正确重置
             self.is_gesture_active = False
@@ -1764,11 +1764,11 @@ class PPTFloatingWindow(QWidget):
         self.minimize_btn.mouseMoveEvent = self.button_mouse_move_event
         self.minimize_btn.mouseReleaseEvent = self.button_mouse_release_event
         
-        print("📦 悬浮窗已最小化")
+        # print(
         
     def restore_window(self):
         """恢复窗口"""
-        print("进入restore_window")
+        # print(
         # 重置所有拖拽相关状态
         self._drag_active = False
         self._button_drag_start = False
@@ -1834,7 +1834,7 @@ class PPTFloatingWindow(QWidget):
                     
                     # 将按钮添加到原始title_layout的末尾
                     title_layout.addWidget(self.minimize_btn)
-                    print("✅ 最小化按钮已预先添加到原始布局")
+                    # print(
         
         # 清理当前最小化布局
         if self.layout():
@@ -1865,13 +1865,13 @@ class PPTFloatingWindow(QWidget):
         self.minimize_btn.show()
         self.minimize_btn.setVisible(True)
         
-        print("✅ 窗口恢复完成，最小化按钮已正确恢复")
+        # print(
         
         # 强制更新布局和显示
         self.updateGeometry()
         self.update()
         
-        print("📂 悬浮窗已恢复")
+        # print(
 
     def setup_button_drag_handling(self):
         """为最小化按钮设置拖拽事件处理"""
@@ -1899,7 +1899,7 @@ class PPTFloatingWindow(QWidget):
                     if hasattr(self, '_pre_minimize_pos'):
                         distance = (current_window_pos - self._pre_minimize_pos).manhattanLength()
                         if distance > 200:  # 如果距离过大，可能是位置不准确
-                            print(f"⚠️ 检测到异常位置跳跃: {distance}px，使用备用位置")
+                            # print(
                             # 使用相对于pre_minimize_pos的合理位置
                             current_window_pos = self._pre_minimize_pos
                 except:
@@ -1909,11 +1909,11 @@ class PPTFloatingWindow(QWidget):
                 self._drag_pos = global_pos - current_window_pos
                 self._drag_start_pos = global_pos
                 
-                print(f"🖱️ DEBUG: 拖拽开始 - 全局位置: {global_pos}, 窗口位置: {current_window_pos}, 偏移: {self._drag_pos}")
+                # print(
                 
                 # 验证偏移量是否合理（偏移量不应该超过窗口尺寸太多）
                 if abs(self._drag_pos.x()) > 100 or abs(self._drag_pos.y()) > 100:
-                    print(f"⚠️ 偏移量异常，重新计算...")
+                    # print(
                     # 使用按钮中心作为默认偏移
                     self._drag_pos = QPoint(35, 15)  # 按钮大小的一半
                 
@@ -1932,14 +1932,14 @@ class PPTFloatingWindow(QWidget):
             if move_distance > 8:
                 if not self._drag_active:
                     self._drag_active = True
-                    print(f"🖱️ DEBUG: 开始拖拽，移动距离: {move_distance}")
+                    # print(
             
             # 一旦开始拖动，就持续移动窗口，保持鼠标和窗口的相对位置
             if self._drag_active:
                 # 计算新的窗口位置：当前鼠标位置 - 初始记录的偏移量
                 new_window_pos = current_global_pos - self._drag_pos
                 self.move(new_window_pos)
-                # print(f"🖱️ DEBUG: 拖拽中 - 鼠标位置: {current_global_pos}, 新窗口位置: {new_window_pos}")
+                # # print(
             event.accept()
         else:
             QPushButton.mouseMoveEvent(self.minimize_btn, event)
@@ -1949,13 +1949,13 @@ class PPTFloatingWindow(QWidget):
         if self._is_minimized and event.button() == Qt.LeftButton:
             if self._drag_active:
                 # 拖动结束，不触发点击
-                print("🖱️ DEBUG: 拖拽结束")
+                # print(
                 self._drag_active = False
                 self._button_drag_start = False
                 event.accept()
             else:
                 # 未拖动，触发按钮点击
-                print("🖱️ DEBUG: 按钮点击")
+                # print(
                 self._button_drag_start = False
                 self.minimize_btn.click()  # 直接模拟点击
                 event.accept()
@@ -1964,40 +1964,40 @@ class PPTFloatingWindow(QWidget):
 
     def set_subtitle_display_enabled(self, enabled: bool):
         """设置字幕显示开关"""
-        print(f"🔧 设置字幕显示状态: {enabled}")
+        # print(
         self.subtitle_display_enabled = enabled
         
         if enabled:
             # 启用字幕显示
-            print("🎯 正在启用字幕显示...")
+            # print(
             if hasattr(self, 'voice_subtitle_timer'):
                 # 检查语音识别是否正在运行
                 voice_running = RTVTT.is_voice_recognition_running() if RTVTT else False
-                print(f"🔍 DEBUG: 语音识别运行状态: {voice_running}")
+                # print(
                 
                 if voice_running:
                     self.voice_subtitle_timer.start(500)
-                    print("⏰ 字幕更新定时器已启动 (500ms间隔)")
-                else:
-                    print("⚠️ 语音识别未运行，字幕定时器暂未启动")
-                    print("💡 提示: 请先启动语音识别，然后启用字幕显示")
-            print("✅ 字幕显示已启用")
+                    # print(
+                # else:
+                #     # print(
+                #     # print(
+            # print(
         else:
             # 禁用字幕显示
-            print("🎯 正在禁用字幕显示...")
+            # print(
             if hasattr(self, 'voice_subtitle_timer'):
                 self.voice_subtitle_timer.stop()
-                print("⏰ 字幕更新定时器已停止")
+                # print(
             # 清空字幕显示
             if hasattr(self, 'subtitle_display'):
                 self.subtitle_display.clear_subtitles()
-                print("🧹 字幕显示已清空")
-            print("❌ 字幕显示已禁用")
+                # print(
+            # print(
 
     def set_voice_recognition_enabled(self, enabled: bool):
         """设置语音识别功能可用状态"""
         self.voice_recognition_enabled = enabled
-        print(f"🔧 悬浮窗语音识别功能状态设置为: {'启用' if enabled else '禁用'}")
+        # print(
         
         # 如果禁用了语音识别功能，停止当前的语音识别
         if not enabled:
@@ -2006,7 +2006,7 @@ class PPTFloatingWindow(QWidget):
     def set_voice_keywords(self, keywords: list):
         """设置语音识别关键词"""
         self.voice_keywords = keywords
-        print(f"🔧 悬浮窗接收到语音关键词: {keywords}")
+        # print(
     
     def get_voice_recognition_status(self):
         """获取语音识别状态"""
@@ -2018,7 +2018,7 @@ class PPTFloatingWindow(QWidget):
     
     def start_state_monitoring(self):
         """启动状态监控"""
-        print("🔄 启动悬浮窗状态监控")
+        # print(
         # 初始化记录当前复选框状态，但不改变按钮显示
         self.update_last_checkbox_state()
         # 启动定时器
@@ -2033,9 +2033,9 @@ class PPTFloatingWindow(QWidget):
                 # 获取当前复选框状态并记录
                 self.last_voice_enabled = main_window.voice_checkbox.isChecked() if hasattr(main_window, 'voice_checkbox') else False
                 self.last_gesture_enabled = main_window.gesture_checkbox.isChecked() if hasattr(main_window, 'gesture_checkbox') else False
-                print(f"🔄 记录复选框状态 - 语音: {self.last_voice_enabled}, 手势: {self.last_gesture_enabled}")
+                # print(
         except Exception as e:
-            print(f"❌ 更新复选框状态记录失败: {e}")
+            print("获取主窗口复选框状态失败:", e)
     
     def get_main_window(self):
         """获取主窗口实例"""
@@ -2075,7 +2075,7 @@ class PPTFloatingWindow(QWidget):
             
             # 只有在用户点击过开始按钮后，才根据复选框状态自动更新按钮
             if state_changed and self.has_started_once:
-                print(f"🔄 检测到主窗口复选框状态变化:")
+                # print(
                 print(f"   语音识别: {self.last_voice_enabled} → {current_voice_enabled}")
                 print(f"   手势识别: {self.last_gesture_enabled} → {current_gesture_enabled}")
                 
@@ -2088,25 +2088,25 @@ class PPTFloatingWindow(QWidget):
                     # 两个功能都启用
                     self.btn_start.setText("开始")
                     self._set_start_button_style()
-                    print("✅ 悬浮窗按钮已更新为: 开始 (语音+手势)")
+                    # print(
                     
                 elif current_voice_enabled:
                     # 只启用语音识别
                     self.btn_start.setText("开始")
                     self._set_start_button_style()
-                    print("✅ 悬浮窗按钮已更新为: 开始 (语音)")
+                    # print(
                     
                 elif current_gesture_enabled:
                     # 只启用手势识别
                     self.btn_start.setText("开始")
                     self._set_start_button_style()
-                    print("✅ 悬浮窗按钮已更新为: 开始 (手势)")
+                    # print(
                     
                 else:
                     # 没有功能启用
                     self.btn_start.setText("无功能已启用")
                     self._set_disabled_button_style()
-                    print("❌ 悬浮窗按钮已更新为: 无功能已启用")
+                    # print(
             elif state_changed:
                 # 只更新记录的状态，不改变按钮显示
                 self.last_voice_enabled = current_voice_enabled
@@ -2158,76 +2158,75 @@ class PPTFloatingWindow(QWidget):
 
     def end_presentation(self):
         """结束演示 - 完整的演示结束流程"""
-        print("🎬 开始结束演示流程...")
+        # print(
         
         try:
             # 1. 停止所有活跃的控制功能（语音控制、手势控制）
-            print("🛑 正在停止所有控制功能...")
+            # print(
               # 停止语音识别 - 使用完整的停止流程
-            print("🎤 正在停止语音识别...")
+            # print(
             
             # 首先停止悬浮窗的语音识别功能
             if hasattr(self, 'stop_voice_recognition'):
                 self.stop_voice_recognition()
-                print("✅ 悬浮窗语音识别已停止")
+                # print(
             
             # 确保通过主控制器停止语音识别（双重保险）
             if self.main_controller:
                 try:
                     # 检查语音识别是否正在运行
                     if RTVTT.is_voice_recognition_running():
-                        print("🔧 检测到语音识别仍在运行，通过主控制器强制停止...")
+                        # print(
                         self.main_controller.toggle_voice_recognition(False, [])
-                        print("✅ 主控制器语音识别已停止")
-                    else:
-                        print("ℹ️ 语音识别已经停止")
+                        # print(
+                    # else:
+                    #     # print(
                 except Exception as e:
-                    print(f"⚠️ 通过主控制器停止语音识别时出错: {e}")
-            
+                    print("停止语音识别时出错:", e)
             # 最后直接调用RTVTT停止方法（最终保险）
             try:
                 if RTVTT.is_voice_recognition_running():
-                    print("🔧 语音识别仍在运行，直接调用RTVTT停止方法...")
+                    # print(
                     RTVTT.stop_real_time_voice_recognition()
-                    print("✅ RTVTT语音识别已停止")
+                    # print(
             except Exception as e:
-                print(f"⚠️ 直接停止RTVTT语音识别时出错: {e}")
-            
-            print("✅ 语音识别停止流程完成")
+                print("停止实时语音识别时出错:", e)
+
+            # print(
             
             # 停止手势控制
             if GESTURE_AVAILABLE and self.is_gesture_active:
                 self.stop_gesture_control()
-                print("🖐️ 手势控制已停止")
+                # print(
             
             # 停止录制（如果正在进行）
             if RECORDING_AVAILABLE and self.recording_assistant and self.recording_assistant.is_recording:
                 self.stop_recording()
-                print("🎬 录制已停止")
+                # print(
             
             # 停止演示计时
             if hasattr(self, 'recording_status'):
                 self.recording_status.stop_presentation_timing()
-                print("🕐 演示计时已停止")
+                # print(
               # 2. 完全关闭PPT应用程序和窗口
-            print("📊 正在关闭PPT应用程序...")
+            # print(
             if self.main_controller:
                 # 使用新的完全关闭PPT功能
                 if hasattr(self.main_controller.ppt_controller, 'close_powerpoint_application'):
                     success = self.main_controller.ppt_controller.close_powerpoint_application()
-                    if success:
-                        print("✅ PPT应用程序已完全关闭")
-                    else:
-                        print("⚠️ PPT关闭可能不完整，尝试备用方法...")
-                        self.main_controller.stop_presentation()
-                        print("✅ PPT演示已退出（备用方法）")
+                    # if success:
+                    #     # print(
+                    # else:
+                    #     # print(
+                    #     self.main_controller.stop_presentation()
+                    #     # print(
                 else:
                     # 如果没有新方法，使用原来的方法
                     self.main_controller.stop_presentation()
-                    print("✅ PPT演示已退出（原方法）")
+                    # print(
             
             # 3. 重置主窗口的start_btn状态为"开始播放"
-            print("🔄 正在重置主窗口按钮状态...")
+            # print(
             try:
                 # 从应用程序中查找主窗口
                 from PySide6.QtWidgets import QApplication
@@ -2239,31 +2238,31 @@ class PPTFloatingWindow(QWidget):
                             main_window = widget
                             main_window.start_btn.setText("开始播放")
                             main_window.update_status("演示已结束")
-                            print("✅ 主窗口按钮状态已重置为'开始播放'")
+                            # print(
                             break
-                    else:
-                        print("⚠️ 未找到主窗口，无法重置按钮状态")
-                else:
-                    print("❌ 无法获取应用程序实例")
+                    # else:
+                    #     # print(
+                # else:
+                #     # print(
             except Exception as e:
-                print(f"⚠️ 重置主窗口按钮状态时出错: {e}")
-            
+                print("结束演示时出错:", e)
+
             # 4. 重置悬浮窗状态，确保下次加载时显示"开始"
-            print("🔄 重置悬浮窗状态...")
+            # print(
             self.has_started_once = False
             self.btn_start.setText("开始")
             self._set_start_button_style()
-            print("✅ 悬浮窗状态已重置为初始状态")
+            # print(
             
             # 5. 关闭悬浮窗
-            print("🪟 正在关闭悬浮窗...")
+            # print(
             self.close()
-            print("✅ 悬浮窗已关闭")
+            # print(
             
-            print("🎉 演示结束流程完成！")
+            # print(
             
         except Exception as e:
-            print(f"❌ 结束演示过程中出错: {e}")
+            # print(
             traceback.print_exc()
             # 即使出错，也要尝试关闭窗口
             self.close()

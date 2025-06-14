@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+ 
 """
 文稿管理器 - 负责处理演讲文稿的导入、显示和关键词管理
 Script Manager - Handles script import, display and keyword management
@@ -537,7 +537,7 @@ class ScriptImportDialog(QDialog):
             self.status_label.setText(f"✅ 文稿已保存，共 {len(self.script_lines)} 行")
             
         except Exception as e:
-            print(f"❌ 保存文稿失败: {e}")
+            # print(
             self.status_label.setText("⚠️ 文稿保存失败")
 
 
@@ -575,12 +575,12 @@ class ScriptManager:
             self.script_lines = [line_data["text"] for line_data in self.script_data.get("lines", [])]
             self.script_content = "\n".join(self.script_lines)
             
-            print(f"✅ 已加载导入的文稿: {self.script_data.get('title', '未知')}")
-            print(f"📊 共 {len(self.script_lines)} 行")
+            # print(
+            # print(
             return True
             
         except Exception as e:
-            print(f"❌ 加载导入文稿失败: {e}")
+            # print(
             return False
     
     def get_lines(self):

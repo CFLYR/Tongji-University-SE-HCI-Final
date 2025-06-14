@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+ 
 """
 语音关键词管理窗口
 Voice Keyword Manager Window
@@ -625,7 +625,7 @@ class KeywordManagerDialog(QDialog):
         """加载关键词到列表"""
         self.keyword_list.clear()
         
-        print(f"🔄 加载关键词列表: {self.keywords}")  # 调试信息
+        # print(  # 调试信息
         
         for keyword in self.keywords:
             item = QListWidgetItem()
@@ -640,7 +640,7 @@ class KeywordManagerDialog(QDialog):
             self.keyword_list.addItem(item)
             self.keyword_list.setItemWidget(item, widget)
             
-        print(f"✅ 已加载 {len(self.keywords)} 个关键词到列表")
+        # print(
             
     def add_keyword(self):
         """添加新关键词"""
@@ -654,7 +654,7 @@ class KeywordManagerDialog(QDialog):
             if keyword not in self.keywords:
                 self.keywords.append(keyword)
                 self.load_keywords()
-                print(f"✅ 成功添加关键词: {keyword}")
+                # print(
             else:
                 CustomMessageBox.warning(self, "提示", "该关键词已存在！")
 
@@ -664,7 +664,7 @@ class KeywordManagerDialog(QDialog):
             index = self.keywords.index(old_keyword)
             self.keywords[index] = new_keyword
             self.load_keywords()
-            print(f"✅ 成功编辑关键词: {old_keyword} -> {new_keyword}")
+            # print(
         else:
             CustomMessageBox.warning(self, "提示", "该关键词已存在！")
     
@@ -685,7 +685,7 @@ class KeywordManagerDialog(QDialog):
         if reply == QMessageBox.Yes:
             self.keywords.remove(keyword)
             self.load_keywords()
-            print(f"✅ 成功删除关键词: {keyword}")
+            # print(
     
     def get_keywords(self):
         """获取当前关键词列表"""

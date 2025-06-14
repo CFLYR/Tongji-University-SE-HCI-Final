@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+ 
 """
 PowerPoint控制模块
 PowerPoint Control Module
@@ -23,7 +23,7 @@ try:
     WINDOWS_API_AVAILABLE = True
 except ImportError:
     WINDOWS_API_AVAILABLE = False
-    print("⚠️ Windows API不可用，将使用备用的窗口激活方法")
+    # print(
 
 
 class PPTController:
@@ -125,14 +125,14 @@ class PPTController:
     def close_powerpoint_application(self):
         """完全关闭PowerPoint应用程序"""
         try:
-            print("🔄 正在关闭PowerPoint应用程序...")
+            # print(
             
             # 首先尝试退出演示模式
             if self.is_presentation_active:
                 pt.press('esc')
                 time.sleep(0.5)
                 self.is_presentation_active = False
-                print("✅ 已退出演示模式")
+                # print(
             
             # 方法1：尝试使用Win32 API关闭PPT窗口
             if WINDOWS_API_AVAILABLE:
@@ -151,27 +151,26 @@ class PPTController:
                                 'Microsoft PowerPoint' in window_text):
                                 try:
                                     win32gui.PostMessage(hwnd, win32con.WM_CLOSE, 0, 0)
-                                    print(f"✅ 发送关闭消息到PPT窗口: {window_text}")
+                                    # print(
                                     windows.append(hwnd)
                                 except Exception as e:
-                                    print(f"⚠️ 关闭窗口失败: {e}")
+                                    print("关闭PPT窗口时出错:", e)
                         return True
                     
                     windows = []
                     win32gui.EnumWindows(close_ppt_windows, windows)
                     
                     if windows:
-                        print(f"✅ 已发送关闭消息到 {len(windows)} 个PPT窗口")
+                        # print(
                         time.sleep(1.0)  # 等待窗口关闭
                         return True
-                    else:
-                        print("⚠️ 未找到PowerPoint窗口")
-                        
+                    # else:
+                    #     # print(
                 except Exception as e:
-                    print(f"⚠️ Win32 API关闭方法失败: {e}")
-            
+                    print("激活PPT窗口时出错:", e)
+
             # 方法2：使用Alt+F4关闭当前活动窗口
-            print("🔄 尝试使用Alt+F4关闭PowerPoint...")
+            # print(
             
             # 先尝试激活PPT窗口
             self._activate_ppt_window()
@@ -179,35 +178,35 @@ class PPTController:
             
             # 发送Alt+F4关闭命令
             pt.hotkey('alt', 'f4')
-            print("✅ 已发送Alt+F4关闭命令")
+            # print(
             time.sleep(1.0)
             
             # 方法3：如果还有PPT进程，尝试使用taskkill强制结束
             try:
                 import subprocess
-                print("🔄 检查是否还有PowerPoint进程...")
+                # print(
                 
                 # 检查PowerPoint进程
                 result = subprocess.run(['tasklist', '/FI', 'IMAGENAME eq POWERPNT.EXE'], 
                                       capture_output=True, text=True, shell=True)
                 
                 if 'POWERPNT.EXE' in result.stdout:
-                    print("⚠️ 发现PowerPoint进程仍在运行，尝试强制关闭...")
+                    # print(
                     # 强制结束PowerPoint进程
                     subprocess.run(['taskkill', '/F', '/IM', 'POWERPNT.EXE'], 
                                  capture_output=True, shell=True)
-                    print("✅ PowerPoint进程已强制关闭")
-                else:
-                    print("✅ 没有发现PowerPoint进程")
+                    # print(
+                # else:
+                #     # print(
                     
             except Exception as e:
-                print(f"⚠️ 进程检查/关闭失败: {e}")
-            
-            print("🎉 PowerPoint应用程序关闭完成")
+                print("关闭PowerPoint应用程序时出错:", e)
+
+            # print(
             return True
             
         except Exception as e:
-            print(f"❌ 关闭PowerPoint应用程序失败: {e}")
+            # print(
             import traceback
             traceback.print_exc()
             return False
@@ -240,7 +239,7 @@ class PPTController:
                     win32gui.SetForegroundWindow(hwnd)
                     win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
                     time.sleep(0.2)
-                    print("✅ PPT窗口已激活")
+                    # print(
                     return True
                     
             # 备用方法：使用Alt+Tab
@@ -249,7 +248,7 @@ class PPTController:
             return True
             
         except Exception as e:
-            print(f"⚠️ 激活PPT窗口失败: {e}")
+            # print(
             return False
                
 
@@ -281,7 +280,7 @@ class PPTController:
                     win32gui.SetForegroundWindow(hwnd)
                     win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
                     time.sleep(0.2)
-                    print("✅ PPT窗口已激活")
+                    # print(
                     return True
                     
             # 备用方法：使用Alt+Tab
@@ -290,7 +289,7 @@ class PPTController:
             return True
             
         except Exception as e:
-            print(f"⚠️ 激活PPT窗口失败: {e}")
+            # print(
             return False
 
     def fullscreen_toggle(self):

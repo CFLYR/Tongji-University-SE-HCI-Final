@@ -15,7 +15,7 @@
     "gesture_type": "dynamic",
     "action": "prev_slide",
     "finger_pattern": null,
-    "motion_pattern": "swipe_left",
+    "motion_pattern": "swipe_up",
     "confidence_threshold": 0.7,
     "hold_duration": 0.0,
     "enabled": true,

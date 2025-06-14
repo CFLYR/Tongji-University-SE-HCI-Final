@@ -28,12 +28,12 @@ output_lock = threading.Lock()
 # 从麦克风输入音频的回调函数 向音频队列中添加数据
 def audio_callback(indata, frames, time, status):
     if status:
-        #print(f"🎤 DEBUG: 音频状态警告: {status}", file=sys.stderr)
+        ## print(
         x=1
     # 添加简单的音频活动检测
     volume = np.sqrt(np.mean(indata**2))
     if volume > 0.01:  # 如果有足够的音频信号
-        #print(f"🎤 DEBUG: 检测到音频信号，音量: {volume:.4f}")
+        ## print(
         x=1
     audio_queue.put(indata.copy())
 
@@ -52,10 +52,10 @@ class RealTimeSpeechRecognizer:
         self.next_page_keywords = []
         self.prev_page_keyword = "上一页"
     def __initialize_transcriber(self):
-        print(f"🔧 DEBUG: 初始化阿里云语音识别器...")
-        print(f"🔧 URL: {self.url}")
-        print(f"🔧 APPKEY: {self.appkey}")
-        print(f"🔧 TOKEN: {self.token[:20]}...") # 只显示前20个字符
+        # print(
+        # print(
+        # print(
+        # print( # 只显示前20个字符
         
         try:
             self.transcriber = nls.NlsSpeechTranscriber(
@@ -70,15 +70,15 @@ class RealTimeSpeechRecognizer:
                 on_error=self.on_error,
                 on_close=self.on_close
             )
-            print("✅ NlsSpeechTranscriber 创建成功")
+            # print(
             
             self.transcriber.start(aformat="pcm",
                                    enable_intermediate_result=True,
                                    enable_punctuation_prediction=True,
                                    enable_inverse_text_normalization=True)
-            print("✅ 阿里云语音识别器启动成功")
+            # print(
         except Exception as e:
-            print(f"❌ 初始化阿里云语音识别器失败: {e}")
+            # print(
             import traceback
             traceback.print_exc()
 
@@ -151,15 +151,15 @@ class RealTimeSpeechRecognizer:
             self.last_complete_sentence = result  # 一句完整的不中断的话
             
             print(f"\n🔧 DEBUG: on_sentence_end 收到完整句子: '{result}'")
-            print(f"🔧 DEBUG: 当前下一页关键词: {self.next_page_keywords}")
-            print(f"🔧 DEBUG: 当前上一页关键词: '{self.prev_page_keyword}'")
+            # print(
+            # print(
             
             # 当一段连续不中断的话结束 阿里云的sdk会自动调用该函数 在这里调用PPT换页的逻辑
             with page_lock:                # 检查下一页关键词
                 matched_next_keywords = [kw for kw in self.next_page_keywords if kw in result]
-                print(f"🔧 DEBUG: 匹配到的下一页关键词: {matched_next_keywords}")
+                # print(
                 if matched_next_keywords:
-                    print(f"✅ 关键词匹配成功! 执行下一页操作，匹配的关键词: {matched_next_keywords}")
+                    # print(
                     
                     # 直接发送按键，同时激活PPT窗口
                     try:
@@ -176,19 +176,19 @@ class RealTimeSpeechRecognizer:
                         
                         # 发送右箭头键（下一页）
                         pt.press('right')
-                        print("✅ 语音控制：成功激活PPT窗口并发送按键 right 箭头（下一页）")
+                        # print(
                     except Exception as e:
-                        print(f"❌ 语音控制：发送按键失败: {e}")
+                        # print(
                         # 备用方案：尝试使用PPT控制器
                         try:
                             get_ppt_controller().next_slide()
                         except Exception as e2:
-                            print(f"❌ 备用方案也失败: {e2}")
-                    
+                            print("执行下一页操作时出错:", e2)
+
                     print(f"📄 已执行下一页操作")
                                 
                 elif self.prev_page_keyword in result:
-                    print(f"✅ 上一页关键词匹配成功! 执行上一页操作，匹配的关键词: '{self.prev_page_keyword}'")
+                    # print(
                     
                     # 直接发送按键，不依赖PPT控制器状态
                     try:
@@ -196,78 +196,78 @@ class RealTimeSpeechRecognizer:
                         pt.FAILSAFE = False
                         pt.PAUSE = 0.1
                         pt.press('left')  # 发送左箭头键（上一页）
-                        print("✅ 语音控制：成功发送按键 left 箭头（上一页）")
+                        # print(
                     except Exception as e:
-                        print(f"❌ 语音控制：发送按键失败: {e}")
+                        # print(
                         # 备用方案：尝试使用PPT控制器
                         try:
                             get_ppt_controller().previous_slide()
                         except Exception as e2:
-                            print(f"❌ 备用方案也失败: {e2}")
-                    
+                            print("执行上一页操作时出错:", e2)
+
                     print(f"📄 已执行上一页操作")
                 else:
-                    print(f"❌ 未匹配到任何翻页关键词")
-                    print(f"🔍 DEBUG: 检查是否包含跳转页面指令...")
+                    # print(
+                    # print(
                     self.detect_page_jump_command(result)
                     
             with output_lock:
                 print(f"\n[完整句子] {result}")
         except json.JSONDecodeError:
-            print(f"❌ JSON解析失败: {message}")
+            # print(
             pass
         
     def on_start(self, message, *args):
-        print(f"🔧 DEBUG: on_start 被调用: {message}")
+        print("开始识别")
 
     def on_result_changed(self, message, *args):
         # 解析JSON消息 - 这是实时更新的文本
-        print(f"🔧 DEBUG: on_result_changed 被调用: {message}")
+        # print(
         try:
             data = json.loads(message)
             result = data.get('payload', {}).get('result', '')
             self.current_text = result
             if result:
-                print(f"🎤 实时识别中: {result}")
+                print("实时识别结果:", result)
         except json.JSONDecodeError:
-            print(f"❌ JSON解析失败: {message}")
+            print("解析实时识别结果时出错:", e)
 
     def on_completed(self, message, *args):
-        print(f"🔧 DEBUG: on_completed 被调用: {message}")
+        print("识别完成")
 
     def on_error(self, message, *args):
-        print(f"❌ 阿里云识别错误: {message}")
-        print(f"❌ 错误参数: {args}")
+        # print(
+        print("识别出错:", message)
 
     def on_close(self, *args):
-        print(f"🔧 DEBUG: on_close 被调用: {args}")
+        print("识别关闭")
 
 
 # 调用阿里云的语音转文字的接口
 def recognize_speech(audio_data, recognizer):
-    # print(f"🔧 DEBUG: recognize_speech 被调用，音频数据长度: {len(audio_data)}")
+    # # print(
     try:
         audio_data = np.concatenate(audio_data)
         audio_bytes = audio_data.tobytes()
-        # print(f"🔧 DEBUG: 音频数据转换完成，字节长度: {len(audio_bytes)}")
+        # # print(
         recognizer.send_audio(audio_bytes)
-        # print(f"✅ 音频数据已发送到阿里云")
+        # # print(
     except Exception as e:
-        print(f"❌ recognize_speech 失败: {e}")
+        print("识别出错:", e)
         import traceback
         traceback.print_exc()
 
 
 # 开启音频流并处理音频数据
 def start_audio_stream(recognizer, mic_device_index=1):
-    # print(f"🔧 DEBUG: start_audio_stream 被调用，mic_device_index={mic_device_index}")
+    # # print(
     global RUNNING
     with running_lock:
         RUNNING = True  # 设置全局变量RUNNING为True，开启语音识别
-        print("✅ 语音识别状态已设为开启")
+        # print(
 
     def audio_processing():
-        print("🔧 DEBUG: audio_processing 线程已启动")
+        # print(
         nonlocal recognizer
         mic_audio_buffer = []
         buffer_count = 0
@@ -275,13 +275,13 @@ def start_audio_stream(recognizer, mic_device_index=1):
         while True:
             with running_lock:
                 if not RUNNING:
-                    print("🛑 语音识别已关闭，退出音频处理循环")
+                    # print(
                     break
 
             # 处理音频队列
             queue_size = audio_queue.qsize()
             # if queue_size > 0:
-            #     print(f"🎤 DEBUG: 音频队列中有 {queue_size} 个数据包")
+            #     # print(
                 
             while not audio_queue.empty():
                 try:
@@ -289,25 +289,25 @@ def start_audio_stream(recognizer, mic_device_index=1):
                     mic_audio_buffer.append(audio_data)
                     buffer_count += 1
                     # if buffer_count % 20 == 0:  # 每20个包打印一次
-                    #     print(f"🎤 DEBUG: 已处理 {buffer_count} 个音频包，当前缓冲区长度: {len(mic_audio_buffer)}")
+                    #     # print(
                 except Exception as e:
-                    print(f"❌ 处理音频队列时出错: {e}")
+                    print("处理音频队列时出错:", e)
 
             if len(mic_audio_buffer) >= 10:
-                # print(f"🎤 DEBUG: 缓冲区已满({len(mic_audio_buffer)})，启动识别线程")
+                # # print(
                 try:
                     threading.Thread(target=recognize_speech, args=(mic_audio_buffer.copy(), recognizer)).start()
                     mic_audio_buffer = []  # 清空缓冲区
                 except Exception as e:
-                    print(f"❌ 启动识别线程失败: {e}")
+                    print("处理音频缓冲区时出错:", e)
 
             time.sleep(0.1)
 
         recognizer.stop_transcription()
-        print("🔧 DEBUG: audio_processing 线程已结束")
+        # print(
 
     # 创建麦克风输入流
-    print(f"🎤 DEBUG: 正在创建麦克风输入流，设备索引: {mic_device_index}")
+    # print(
     try:
         # 测试设备是否可用
         test_stream = sd.InputStream(
@@ -318,7 +318,7 @@ def start_audio_stream(recognizer, mic_device_index=1):
             device=mic_device_index
         )
         test_stream.close()
-        print(f"✅ 麦克风设备 {mic_device_index} 测试成功")
+        # print(
         
         mic_stream = sd.InputStream(
             callback=audio_callback,
@@ -327,36 +327,36 @@ def start_audio_stream(recognizer, mic_device_index=1):
             dtype='int16',
             device=mic_device_index
         )
-        print("✅ 麦克风输入流创建成功")
+        # print(
     except Exception as e:
-        print(f"❌ 麦克风输入流创建失败: {e}")
-        print("🔧 尝试列出可用设备...")
+        # print(
+        # print(
         list_audio_devices()
         return
 
-    print("🎤 DEBUG: 启动音频流...")
+    # print(
     try:
         with mic_stream:
-            print("✅ 麦克风已激活，开始音频处理")
+            # print(
             audio_processing()
     except Exception as e:
-        print(f"❌ 音频流运行时出错: {e}")
+        # print(
         import traceback
         traceback.print_exc()
 
 
 def toggle_audio_stream(enabled: bool):
-    print(f"🔧 DEBUG: toggle_audio_stream 被调用，enabled={enabled}")
+    # print(
     print(f"切换语音识别状态: {'开启' if enabled else '关闭'}")
     global RUNNING
     with running_lock:
         old_running = RUNNING
         RUNNING = enabled
-        print(f"🔧 DEBUG: RUNNING 状态从 {old_running} 变更为 {RUNNING}")
+        # print(
     
-    if enabled:
-        print("❌ WARNING: toggle_audio_stream(True) 只设置了状态，但没有启动音频流！")
-        print("💡 提示: 需要调用 start_audio_stream() 来实际启动音频流和麦克风")
+    # if enabled:
+    #     # print(
+    #     # print(
 
 
 _RTVTT_recognizer = None
@@ -381,29 +381,29 @@ def is_voice_recognition_running():
 
 def list_audio_devices():
     """列出可用的音频设备"""
-    print("🎤 DEBUG: 可用的音频设备:")
+    # print(
     try:
         devices = sd.query_devices()
-        for i, device in enumerate(devices):
-            if device['max_input_channels'] > 0:  # 只显示输入设备
-                print(f"  设备 {i}: {device['name']} (输入通道: {device['max_input_channels']})")
-        print(f"🎤 DEBUG: 默认输入设备: {sd.default.device[0]}")
+        # for i, device in enumerate(devices):
+        #     if device['max_input_channels'] > 0:  # 只显示输入设备
+        #         print(f"  设备 {i}: {device['name']} (输入通道: {device['max_input_channels']})")
+        # print(
     except Exception as e:
-        print(f"❌ 查询音频设备失败: {e}")
+        print("列出音频设备时出错:", e)
 
 
 def start_real_time_voice_recognition(mic_device_index=None):
     """启动完整的实时语音识别（包括音频流）"""
-    print(f"🔧 DEBUG: start_real_time_voice_recognition 被调用，mic_device_index={mic_device_index}")
+    # print(
     
     # 如果没有指定设备，使用默认设备
     if mic_device_index is None:
         try:
             mic_device_index = sd.default.device[0]
-            print(f"🎤 使用默认麦克风设备: {mic_device_index}")
+            # print(
         except:
             mic_device_index = 0
-            print(f"🎤 使用设备 0 作为默认设备")
+            # print(
     
     # 列出可用设备以供调试
     list_audio_devices()
@@ -412,7 +412,7 @@ def start_real_time_voice_recognition(mic_device_index=None):
     
     # 检查是否已经在运行
     if _audio_stream_thread and _audio_stream_thread.is_alive():
-        print("⚠️ 语音识别已在运行中")
+        # print(
         return True
     
     try:
@@ -420,18 +420,18 @@ def start_real_time_voice_recognition(mic_device_index=None):
         recognizer = get_RTVTT_recognizer()
         
         # 重要：强制重新初始化transcriber，确保每次启动都是全新的
-        print("🔧 强制重新初始化阿里云transcriber...")
+        # print(
         recognizer._RealTimeSpeechRecognizer__initialize_transcriber()
-        print("✅ 阿里云transcriber重新初始化完成")
+        # print(
         
         # 【新增】启动前清空识别内容，确保重新开始
         recognizer.last_complete_sentence = ""
         recognizer.current_text = ""
-        print("🧹 识别器内容已清空，确保重新开始")
-        print("✅ 语音识别器已准备就绪")
+        # print(
+        # print(
         
         # 启动音频流线程
-        print("🚀 正在启动音频流线程...")
+        # print(
         _audio_stream_thread = threading.Thread(
             target=start_audio_stream,
             args=(recognizer, mic_device_index),
@@ -443,16 +443,16 @@ def start_real_time_voice_recognition(mic_device_index=None):
         time.sleep(0.5)
         
         if _audio_stream_thread.is_alive():
-            print("✅ 实时语音识别完全启动成功！")
-            print(f"🎤 麦克风设备索引: {mic_device_index}")
-            print(f"🔧 RUNNING状态: {RUNNING}")
+            # print(
+            # print(
+            # print(
             return True
         else:
-            print("❌ 音频流线程启动失败")
+            # print(
             return False
             
     except Exception as e:
-        print(f"❌ 启动实时语音识别失败: {e}")
+        # print(
         import traceback
         traceback.print_exc()
         return False
@@ -460,51 +460,51 @@ def start_real_time_voice_recognition(mic_device_index=None):
 
 def stop_real_time_voice_recognition():
     """停止实时语音识别"""
-    print("🔧 DEBUG: stop_real_time_voice_recognition 被调用")
+    # print(
     global _audio_stream_thread, RUNNING, _RTVTT_recognizer
     
     # 先停止transcriber
     if _RTVTT_recognizer and _RTVTT_recognizer.transcriber:
         try:
-            print("🔧 正在停止阿里云transcriber...")
+            # print(
             _RTVTT_recognizer.transcriber.stop()
-            print("✅ 阿里云transcriber已停止")
+            # print(
         except Exception as e:
-            print(f"⚠️ 停止transcriber时出错: {e}")
-    
+            print("停止transcriber时出错:", e)
+
     # 停止音频流
     with running_lock:
         RUNNING = False
-        print(f"🔧 DEBUG: RUNNING 设置为 False")
+        # print(
     
     # 等待线程结束
     if _audio_stream_thread and _audio_stream_thread.is_alive():
         print("⏳ 等待音频流线程结束...")
         _audio_stream_thread.join(timeout=3.0)
-        if _audio_stream_thread.is_alive():
-            print("⚠️ 音频流线程未能正常结束")
-        else:
-            print("✅ 音频流线程已结束")
+        # if _audio_stream_thread.is_alive():
+        #     # print(
+        # else:
+        #     # print(
     
     _audio_stream_thread = None
     
     # 重要：清空和重置识别器，准备下次使用
     if _RTVTT_recognizer is not None:
-        print("🔧 正在重置语音识别器...")
+        # print(
         _RTVTT_recognizer.last_complete_sentence = ""
         _RTVTT_recognizer.current_text = ""
         _RTVTT_recognizer.transcriber = None  # 清空transcriber，强制下次重新初始化
-        print("✅ 语音识别器已重置")
+        # print(
     
-    print("✅ 实时语音识别已完全停止")
+    # print(
 
 def set_voice_keywords(next_page_keywords: list, prev_page_keyword: str = "上一页"):
     """设置语音识别的关键词"""
     global _RTVTT_recognizer
     
-    print(f"🔧 DEBUG: set_voice_keywords 被调用")
-    print(f"🔧 DEBUG: 设置下一页关键词: {next_page_keywords}")
-    print(f"🔧 DEBUG: 设置上一页关键词: {prev_page_keyword}")
+    # print(
+    # print(
+    # print(
     
     # 获取或创建识别器
     recognizer = get_RTVTT_recognizer()
@@ -513,7 +513,7 @@ def set_voice_keywords(next_page_keywords: list, prev_page_keyword: str = "上�
     recognizer.next_page_keywords = next_page_keywords.copy() if next_page_keywords else []
     recognizer.prev_page_keyword = prev_page_keyword
     
-    print(f"✅ 关键词设置完成:")
+    # print(
     print(f"   - 下一页关键词: {recognizer.next_page_keywords}")
     print(f"   - 上一页关键词: '{recognizer.prev_page_keyword}'")
 

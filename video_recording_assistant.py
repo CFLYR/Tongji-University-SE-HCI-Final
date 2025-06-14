@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+ 
 """
 录视频助手 - Video Recording Assistant
 
@@ -32,7 +32,6 @@ import pyttsx3
 from PIL import Image, ImageTk
 import mss
 import ffmpeg
-
 # 导入现有模块
 from speech_text_manager import SpeechTextManager, TextMatcher
 from chinese_text_renderer import put_text_auto
@@ -102,10 +101,10 @@ class AudioRecorder:
 
             self.audio_thread = threading.Thread(target=self._record_audio)
             self.audio_thread.start()
-            print("🎵 开始录制音频")
+            #print("🎵 开始录制音频")
 
         except Exception as e:
-            print(f"❌ 音频录制启动失败: {e}")
+            # print(
             self.is_recording = False
 
     def _record_audio(self):
@@ -115,7 +114,7 @@ class AudioRecorder:
                 data = self.stream.read(self.chunk, exception_on_overflow=False)
                 self.audio_data.append(data)
             except Exception as e:
-                print(f"❌ 音频录制错误: {e}")
+                # print(
                 break
 
     def stop_recording(self, output_path: str):
@@ -133,16 +132,13 @@ class AudioRecorder:
             self.stream.close()
 
         # 保存音频文件
-        try:
-            wf = wave.open(output_path, 'wb')
-            wf.setnchannels(self.channels)
-            wf.setsampwidth(self.audio.get_sample_size(self.format))
-            wf.setframerate(self.rate)
-            wf.writeframes(b''.join(self.audio_data))
-            wf.close()
-            print(f"🎵 音频已保存: {output_path}")
-        except Exception as e:
-            print(f"❌ 音频保存失败: {e}")
+        wf = wave.open(output_path, 'wb')
+        wf.setnchannels(self.channels)
+        wf.setsampwidth(self.audio.get_sample_size(self.format))
+        wf.setframerate(self.rate)
+        wf.writeframes(b''.join(self.audio_data))
+        wf.close()
+        #print(f"🎵 音频已保存: {output_path}")
 
     def cleanup(self):
         """清理资源"""
@@ -171,9 +167,9 @@ class VideoRecorder:
             try:
                 self.screen_capture = mss.mss()
                 self.monitor = self.screen_capture.monitors[1]  # 主显示器
-                print("✅ 屏幕捕获初始化成功")
+                # print(
             except Exception as e:
-                print(f"❌ 屏幕捕获初始化失败: {e}")
+                # print(
                 self.config.enable_screen = False
 
         # 初始化摄像头
@@ -181,14 +177,14 @@ class VideoRecorder:
             try:
                 self.camera_capture = cv.VideoCapture(0)
                 if not self.camera_capture.isOpened():
-                    print("⚠️  摄像头无法打开，将跳过摄像头录制")
+                    # print(
                     self.config.enable_camera = False
                 else:
                     self.camera_capture.set(cv.CAP_PROP_FRAME_WIDTH, self.config.camera_size[0])
                     self.camera_capture.set(cv.CAP_PROP_FRAME_HEIGHT, self.config.camera_size[1])
-                    print("✅ 摄像头初始化成功")
+                    # print(
             except Exception as e:
-                print(f"❌ 摄像头初始化失败: {e}")
+                # print(
                 self.config.enable_camera = False
 
     def start_recording(self, output_path: str):
@@ -215,7 +211,7 @@ class VideoRecorder:
         )
 
         if not self.video_writer.isOpened():
-            print("❌ 视频写入器初始化失败")
+            # print(
             return
 
         self.is_recording = True
@@ -223,7 +219,7 @@ class VideoRecorder:
 
         self.recording_thread = threading.Thread(target=self._record_video)
         self.recording_thread.start()
-        print("🎬 开始录制视频")
+        # print(
 
     def _record_video(self):
         """录制视频线程"""
@@ -242,7 +238,7 @@ class VideoRecorder:
                     self.video_writer.write(frame)
                 time.sleep(1.0 / self.config.video_fps)
             except Exception as e:
-                print(f"❌ 视频录制错误: {e}")
+                # print(
                 break
 
         # 清理线程本地的screen capture
@@ -260,7 +256,7 @@ class VideoRecorder:
                 frame = np.array(screenshot)
                 frame = cv.cvtColor(frame, cv.COLOR_BGRA2BGR)
             except Exception as e:
-                print(f"❌ 屏幕捕获错误: {e}")
+                # print(
                 # 创建黑色画面作为备用
                 frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
 
@@ -288,7 +284,7 @@ class VideoRecorder:
                     frame = self._mask_floating_window(frame)
 
             except Exception as e:
-                print(f"❌ 屏幕捕获错误: {e}")
+                # print(
                 # 创建黑色画面作为备用
                 frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
                 cv.putText(frame, "Screen Capture Error", (50, 100),
@@ -296,12 +292,10 @@ class VideoRecorder:
 
         # 添加摄像头画面
         if self.config.enable_camera and self.camera_capture:
-            try:
-                ret, camera_frame = self.camera_capture.read()
-                if ret:
-                    frame = self._overlay_camera(frame, camera_frame)
-            except Exception as e:
-                print(f"❌ 摄像头捕获错误: {e}")
+            ret, camera_frame = self.camera_capture.read()
+            if ret:
+                frame = self._overlay_camera(frame, camera_frame)
+            
 
         return frame
 
@@ -332,32 +326,11 @@ class VideoRecorder:
         return screen_frame
 
     def _mask_floating_window(self, frame):
+
         """遮盖悬浮窗区域"""
-        try:
-            if not self.floating_window or not hasattr(self.floating_window, 'geometry'):
-                return frame
-
-            # 获取悬浮窗的几何信息
-            geometry = self.floating_window.geometry()
-            x = geometry.x()
-            y = geometry.y()
-            width = geometry.width()
-            height = geometry.height()
-
-            # 确保坐标在合理范围内
-            frame_height, frame_width = frame.shape[:2]
-            if (x >= 0 and y >= 0 and
-                    x + width <= frame_width and
-                    y + height <= frame_height):
-                # 用背景色遮盖悬浮窗区域 (使用桌面背景色或模糊效果)
-                # 这里使用模糊效果来替代直接遮盖
-                window_region = frame[y:y + height, x:x + width].copy()
-                blurred_region = cv.GaussianBlur(window_region, (21, 21), 0)
-                frame[y:y + height, x:x + width] = blurred_region
-
-        except Exception as e:
-            print(f"⚠️ 悬浮窗遮盖处理失败: {e}")
-
+        if not self.floating_window:
+            return frame
+        
         return frame
 
     def stop_recording(self):
@@ -376,7 +349,7 @@ class VideoRecorder:
         if self.camera_capture:
             self.camera_capture.release()
 
-        print("🎬 视频录制已停止")
+        # print(
 
     def get_recording_duration(self):
         """获取录制时长"""
@@ -416,7 +389,7 @@ class SpeechRecognizer:
         self.subtitles = []
         self.recognition_thread = threading.Thread(target=self._recognize_speech)
         self.recognition_thread.start()
-        print("🎤 开始语音识别")
+        # print(
 
     def _recognize_speech(self):
         """语音识别线程"""
@@ -451,17 +424,15 @@ class SpeechRecognizer:
                         self._correct_subtitle_with_script(subtitle)
 
                     self.subtitles.append(subtitle)
-                    print(f"🎤 识别到: {text}")
+                    # print(
 
                 except sr.UnknownValueError:
                     pass  # 无法识别的音频
-                except sr.RequestError as e:
-                    print(f"❌ 语音识别服务错误: {e}")
 
             except sr.WaitTimeoutError:
                 pass  # 超时，继续下一次监听
             except Exception as e:
-                print(f"❌ 语音识别错误: {e}")
+                # print(
                 time.sleep(1)
 
     def _correct_subtitle_with_script(self, subtitle: SubtitleSegment):
@@ -476,7 +447,7 @@ class SpeechRecognizer:
             subtitle.corrected_text = script_text
             subtitle.is_corrected = True
             subtitle.confidence = confidence
-            print(f"📝 字幕已修正: {subtitle.text} -> {script_text}")
+            # print(
 
     def stop_recognition(self):
         """停止语音识别"""
@@ -487,7 +458,7 @@ class SpeechRecognizer:
         if self.recognition_thread:
             self.recognition_thread.join()
 
-        print("🎤 语音识别已停止")
+        # print(
 
     def get_subtitles(self) -> List[SubtitleSegment]:
         """获取字幕列表"""
@@ -498,17 +469,12 @@ class SpeechRecognizer:
         if not self.subtitles:
             return
 
-        try:
-            if format_type.lower() == "srt":
-                self._export_srt(output_path)
-            elif format_type.lower() == "json":
-                self._export_json(output_path)
-            else:
-                self._export_txt(output_path)
-
-            print(f"📝 字幕已导出: {output_path}")
-        except Exception as e:
-            print(f"❌ 字幕导出失败: {e}")
+        if format_type.lower() == "srt":
+            self._export_srt(output_path)
+        elif format_type.lower() == "json":
+            self._export_json(output_path)
+        else:
+            self._export_txt(output_path)
 
     def _export_srt(self, output_path: str):
         """导出SRT格式字幕"""
@@ -548,17 +514,12 @@ class SpeechRecognizer:
 
     def load_subtitles(self, file_path: str):
         """加载字幕文件"""
-        try:
-            if file_path.endswith('.json'):
-                self._load_json_subtitles(file_path)
-            elif file_path.endswith('.srt'):
-                self._load_srt_subtitles(file_path)
-            else:
-                self._load_txt_subtitles(file_path)
-
-            print(f"📝 字幕已加载: {file_path}")
-        except Exception as e:
-            print(f"❌ 字幕加载失败: {e}")
+        if file_path.endswith('.json'):
+            self._load_json_subtitles(file_path)
+        elif file_path.endswith('.srt'):
+            self._load_srt_subtitles(file_path)
+        else:
+            self._load_txt_subtitles(file_path)
 
     def _load_json_subtitles(self, file_path: str):
         """加载JSON格式字幕"""
@@ -624,7 +585,7 @@ class VideoRecordingAssistant:
         for key, value in kwargs.items():
             if hasattr(self.config, key):
                 setattr(self.config, key, value)
-        print(f"📝 配置已更新: {kwargs}")
+        # print(
 
     def start_recording(self, floating_window=None):
         """开始录制
@@ -633,7 +594,7 @@ class VideoRecordingAssistant:
             floating_window: 可选的悬浮窗对象，用于在录制时排除悬浮窗区域
         """
         if self.is_recording:
-            print("⚠️  已在录制中")
+            # print(
             return False
 
         # 生成会话ID
@@ -641,7 +602,7 @@ class VideoRecordingAssistant:
         session_dir = os.path.join(self.output_dir, self.current_session_id)
         os.makedirs(session_dir, exist_ok=True)
 
-        print(f"🎬 开始录制会话: {self.current_session_id}")
+        # print(
 
         try:
             # 初始化录制器
@@ -661,11 +622,11 @@ class VideoRecordingAssistant:
                 self.speech_recognizer.start_recognition()
 
             self.is_recording = True
-            print("✅ 录制已开始")
+            # print(
             return True
 
         except Exception as e:
-            print(f"❌ 录制启动失败: {e}")
+            # print(
             self.stop_recording()
             return False
 
@@ -674,7 +635,7 @@ class VideoRecordingAssistant:
         if not self.is_recording:
             return
 
-        print("🛑 正在停止录制...")
+        # print(
 
         try:
             # 停止音频录制
@@ -702,13 +663,13 @@ class VideoRecordingAssistant:
                 self.speech_recognizer.export_subtitles(srt_path, "srt")
 
             self.is_recording = False
-            print(f"✅ 录制已完成，文件保存在: {os.path.join(self.output_dir, self.current_session_id)}")
+            # print(
 
             # 尝试合并音视频
             self._merge_audio_video()
 
         except Exception as e:
-            print(f"❌ 停止录制时出错: {e}")
+            print(f"停止录制时出错: {e}")
 
     def _merge_audio_video(self):
         """合并音频和视频文件"""
@@ -734,10 +695,10 @@ class VideoRecordingAssistant:
                 )
                 ffmpeg.run(out, overwrite_output=True, quiet=True)
 
-                print(f"🎬 音视频已合并: {output_path}")
+                # print(
 
         except Exception as e:
-            print(f"⚠️  音视频合并失败: {e}")
+            print(f"合并音视频时出错: {e}")
 
     def get_recording_status(self) -> Dict:
         """获取录制状态"""
@@ -764,7 +725,7 @@ class VideoRecordingAssistant:
         if self.speech_recognizer and 0 <= index < len(self.speech_recognizer.subtitles):
             self.speech_recognizer.subtitles[index].text = new_text
             self.speech_recognizer.subtitles[index].is_corrected = True
-            print(f"📝 字幕已编辑: 索引{index}")
+            # print(
 
     def export_subtitles(self, output_path: str, format_type: str = "srt"):
         """导出字幕"""

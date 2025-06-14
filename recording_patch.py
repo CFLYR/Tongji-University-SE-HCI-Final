@@ -1,5 +1,5 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+  
+ 
 """
 主窗口录像功能补丁文件
 """

@@ -237,7 +237,7 @@ class MainWindow(QMainWindow):
             
             # 启用AI优化建议按钮
             self.ai_chat_btn.setEnabled(True)
-            print(f"✅ AI优化建议按钮已启用，PPT路径: {file_path}")
+            ##print(f"✅ AI优化建议按钮已启用，PPT路径: {file_path}")
             
         except Exception as e:
             # 如果加载失败，恢复按钮状态
@@ -269,7 +269,7 @@ class MainWindow(QMainWindow):
             
             # 更新状态
             self.update_status(f"已加载PPT文件：{file_name}")
-            print(f"✅ PPT信息已更新：{file_name}，共{slide_count}张幻灯片")
+            #print(f"✅ PPT信息已更新：{file_name}，共{slide_count}张幻灯片")
             
         except Exception as e:
             print(f"❌ 获取PPT信息失败: {str(e)}")
@@ -320,13 +320,13 @@ class MainWindow(QMainWindow):
                             # 让悬浮窗加载完整的文稿内容
                             if hasattr(self.floating_window, 'load_imported_script'):
                                 success = self.floating_window.load_imported_script()
-                                if success:
-                                    print("✅ 已将完整文稿加载到悬浮窗")
-                                else:
-                                    # 如果悬浮窗加载失败，使用预览文本
-                                    first_line = self.script_manager.get_line_by_number(1)
-                                    if first_line:
-                                        self.floating_window.set_script_text(f"📄 演讲文稿已加载\n{first_line[:50]}...")
+                                # if success:
+                                #     #print("✅ 已将完整文稿加载到悬浮窗")
+                                # else:
+                                #     # 如果悬浮窗加载失败，使用预览文本
+                                #     first_line = self.script_manager.get_line_by_number(1)
+                                #     if first_line:
+                                #         self.floating_window.set_script_text(f"📄 演讲文稿已加载\n{first_line[:50]}...")
                             else:
                                 # 如果悬浮窗没有load_imported_script方法，使用预览文本
                                 first_line = self.script_manager.get_line_by_number(1)
@@ -339,17 +339,17 @@ class MainWindow(QMainWindow):
                     if hasattr(self.controller, 'speech_manager'):
                         self.floating_window.set_speech_manager(self.controller.speech_manager)                    # 同步当前字幕显示状态到悬浮窗
                     if hasattr(self, 'subtitle_checkbox') and self.subtitle_checkbox.isChecked():
-                        print("🔄 同步字幕显示状态到悬浮窗")
+                        #print("🔄 同步字幕显示状态到悬浮窗")
                         self.floating_window.set_subtitle_display_enabled(True)
                     
                     # 同步语音识别功能状态和关键词到悬浮窗
                     if hasattr(self, 'voice_checkbox') and self.voice_checkbox.isChecked():
-                        print("🔄 同步语音识别功能状态到悬浮窗")
+                        #print("🔄 同步语音识别功能状态到悬浮窗")
                         if hasattr(self.floating_window, 'set_voice_recognition_enabled'):
                             self.floating_window.set_voice_recognition_enabled(True)
                         if hasattr(self.floating_window, 'set_voice_keywords'):
                             self.floating_window.set_voice_keywords(self.voice_keywords)
-                            print(f"📝 已将关键词同步到悬浮窗: {self.voice_keywords}")
+                            print(f" 已将关键词同步到悬浮窗: {self.voice_keywords}")
 
                 self.floating_window.show()
         else:
@@ -418,7 +418,7 @@ class MainWindow(QMainWindow):
                 # 传递关键词到悬浮窗
                 if hasattr(self.floating_window, 'set_voice_keywords'):
                     self.floating_window.set_voice_keywords(self.voice_keywords)
-                    print(f"📝 已将关键词传递到悬浮窗: {self.voice_keywords}")
+                    print(f" 已将关键词传递到悬浮窗: {self.voice_keywords}")
 
     def show_keyword_settings(self):
         """显示关键词设置对话框"""
@@ -427,7 +427,7 @@ class MainWindow(QMainWindow):
         def on_keywords_updated(keywords):
             self.voice_keywords = keywords
             self.update_status(f"关键词已更新，共 {len(keywords)} 个")
-            print(f"📝 语音关键词已更新: {keywords}")
+            print(f" 语音关键词已更新: {keywords}")
         
         dialog.keywords_changed.connect(on_keywords_updated)
         dialog.exec()
@@ -458,15 +458,15 @@ class MainWindow(QMainWindow):
                     # 让悬浮窗加载完整的文稿内容
                     if hasattr(self.floating_window, 'load_imported_script'):
                         success = self.floating_window.load_imported_script()
-                        if success:
-                            print("✅ 完整文稿已同步到悬浮窗")
-                        else:
-                            # 如果加载失败，使用预览文本
-                            first_line = self.script_manager.get_line_by_number(1)
-                            if first_line:
-                                self.floating_window.set_script_text(f"📄 文稿已导入\n{first_line[:50]}...")
-                            else:
-                                self.floating_window.set_script_text("📄 文稿已导入，可以开始演示")
+                        # if success:
+                        #     #print("✅ 完整文稿已同步到悬浮窗")
+                        # else:
+                        #     # 如果加载失败，使用预览文本
+                        #     first_line = self.script_manager.get_line_by_number(1)
+                        #     if first_line:
+                        #         self.floating_window.set_script_text(f"📄 文稿已导入\n{first_line[:50]}...")
+                        #     else:
+                        #         self.floating_window.set_script_text("📄 文稿已导入，可以开始演示")
                     else:
                         # 如果悬浮窗没有load_imported_script方法，使用预览文本
                         first_line = self.script_manager.get_line_by_number(1)
@@ -496,15 +496,15 @@ class MainWindow(QMainWindow):
                     # 让悬浮窗加载完整的文稿内容
                     if hasattr(self.floating_window, 'load_imported_script'):
                         success = self.floating_window.load_imported_script()
-                        if success:
-                            print("✅ 完整文稿已同步到悬浮窗")
-                        else:
-                            # 如果加载失败，使用预览文本
-                            first_line = self.script_manager.get_line_by_number(1)
-                            if first_line:
-                                self.floating_window.set_script_text(f"📄 文稿已导入\n{first_line[:50]}...")
-                            else:
-                                self.floating_window.set_script_text("📄 文稿已导入，可以开始演示")
+                        # if success:
+                        #     #print("✅ 完整文稿已同步到悬浮窗")
+                        # else:
+                        #     # 如果加载失败，使用预览文本
+                        #     first_line = self.script_manager.get_line_by_number(1)
+                        #     if first_line:
+                        #         self.floating_window.set_script_text(f"📄 文稿已导入\n{first_line[:50]}...")
+                        #     else:
+                        #         self.floating_window.set_script_text("📄 文稿已导入，可以开始演示")
                     else:
                         # 如果悬浮窗没有load_imported_script方法，使用预览文本
                         first_line = self.script_manager.get_line_by_number(1)
@@ -738,7 +738,7 @@ class MainWindow(QMainWindow):
             subtitle_preview = subtitle_text[:20] + "..." if len(subtitle_text) > 20 else subtitle_text
             self.recording_status_label.setText(f"🎥 录制中 📝 {subtitle_preview}")
 
-        print(f"📝 字幕更新: {subtitle_text}")
+        print(f"字幕更新: {subtitle_text}")
 
     def toggle_quick_recording(self):
         """快捷录像功能"""
@@ -1767,9 +1767,9 @@ class MainWindow(QMainWindow):
 
     def toggle_subtitle_display(self, enabled: bool):
         """切换字幕显示状态"""
-        print(f"🔧 DEBUG: toggle_subtitle_display 被调用, enabled={enabled}")
-        print(f"🔧 DEBUG: 语音识别状态: {self.voice_checkbox.isChecked()}")
-        print(f"🔧 DEBUG: 悬浮窗存在: {hasattr(self, 'floating_window') and self.floating_window is not None}")
+        #print(f"🔧 DEBUG: toggle_subtitle_display 被调用, enabled={enabled}")
+        #print(f"🔧 DEBUG: 语音识别状态: {self.voice_checkbox.isChecked()}")
+        #print(f"🔧 DEBUG: 悬浮窗存在: {hasattr(self, 'floating_window') and self.floating_window is not None}")
         
         if enabled and not self.voice_checkbox.isChecked():
             # 如果语音识别未开启，不允许开启字幕
@@ -1782,19 +1782,19 @@ class MainWindow(QMainWindow):
 
         # 通知悬浮窗更新字幕显示状态
         if hasattr(self, 'floating_window') and self.floating_window is not None:
-            print(f"📡 DEBUG: 正在通知悬浮窗更新字幕状态: {enabled}")
+            #print(f"📡 DEBUG: 正在通知悬浮窗更新字幕状态: {enabled}")
             self.floating_window.set_subtitle_display_enabled(enabled)
-        else:
-            print("⚠️ DEBUG: 悬浮窗不存在，无法设置字幕状态")
+        # else:
+        #     #print("⚠️ DEBUG: 悬浮窗不存在，无法设置字幕状态")
 
         status_text = "字幕显示已开启" if enabled else "字幕显示已关闭"
         self.update_status(status_text)
-        print(f"✅ DEBUG: 字幕显示状态更新完成: {status_text}")
+        #print(f"✅ DEBUG: 字幕显示状态更新完成: {status_text}")
 
     def toggle_script_follow(self, enabled: bool):
         """切换文稿跟随状态"""
-        print(f"🔧 DEBUG: toggle_script_follow 被调用, enabled={enabled}")
-        print(f"🔧 DEBUG: 语音识别状态: {self.voice_checkbox.isChecked()}")
+        #print(f"🔧 DEBUG: toggle_script_follow 被调用, enabled={enabled}")
+        #print(f"🔧 DEBUG: 语音识别状态: {self.voice_checkbox.isChecked()}")
         
         if enabled and not self.voice_checkbox.isChecked():
             # 如果语音识别未开启，不允许开启文稿跟随
@@ -1815,7 +1815,7 @@ class MainWindow(QMainWindow):
                 self.update_script_display()
                 self.update_status("文稿跟随已启用")
 
-                print(f"✅ 文稿跟随已启用，共 {len(self.imported_script_lines)} 行文稿")
+                #print(f"✅ 文稿跟随已启用，共 {len(self.imported_script_lines)} 行文稿")
             else:
                 # 如果没有导入文稿，禁用文稿跟随
                 self.script_follow_checkbox.blockSignals(True)
@@ -1852,7 +1852,7 @@ class MainWindow(QMainWindow):
             script_line = self.imported_script_lines[i]
             confidence = self.calculate_text_similarity(cleaned_text, script_line)
             
-            print(f"📝 第{i+1}行: '{script_line[:30]}...' -> 置信度: {confidence:.3f}")
+            print(f" 第{i+1}行: '{script_line[:30]}...' -> 置信度: {confidence:.3f}")
             
             if confidence > max_confidence:
                 max_confidence = confidence
@@ -1860,7 +1860,7 @@ class MainWindow(QMainWindow):
         
         # 如果找不到好的匹配，尝试在整个文稿中搜索
         if max_confidence < 0.3:
-            print("🔄 在当前位置附近未找到匹配，扩大搜索范围...")
+            #print("🔄 在当前位置附近未找到匹配，扩大搜索范围...")
             for i in range(len(self.imported_script_lines)):
                 if i >= search_start and i < search_end:
                     continue  # 跳过已经搜索过的
@@ -1877,7 +1877,7 @@ class MainWindow(QMainWindow):
         is_match = max_confidence >= match_threshold
         
         if is_match:
-            print(f"✅ 匹配成功! 第{best_match_position+1}行, 置信度: {max_confidence:.3f}")
+            #print(f"✅ 匹配成功! 第{best_match_position+1}行, 置信度: {max_confidence:.3f}")
             return True, best_match_position, max_confidence
         else:
             print(f"❌ 匹配失败, 最高置信度: {max_confidence:.3f} < {match_threshold}")
@@ -2026,7 +2026,7 @@ class MainWindow(QMainWindow):
         try:
             if hasattr(self, 'ai_output_text'):
                 self.ai_output_text.setText(text)
-                print(f"✅ AI输出文本已更新")
+                ##print(f"✅ AI输出文本已更新")
         except Exception as e:
             print(f"❌ 更新AI输出文本失败: {e}")
 
@@ -2036,7 +2036,7 @@ class MainWindow(QMainWindow):
             if hasattr(self, 'ai_chat_btn'):
                 self.ai_chat_btn.setEnabled(True)
                 self.ai_chat_btn.setText("💬 获取PPT优化建议")
-                print(f"✅ AI按钮状态已重置")
+                ##print(f"✅ AI按钮状态已重置")
         except Exception as e:
             print(f"❌ 重置AI按钮失败: {e}")
 
@@ -2044,7 +2044,7 @@ class MainWindow(QMainWindow):
         """直接在主线程中更新状态"""
         try:
             self.update_status(message, is_error)
-            print(f"✅ 状态已更新: {message}")
+            #print(f"✅ 状态已更新: {message}")
         except Exception as e:
             print(f"❌ 更新状态失败: {e}")
 
@@ -2073,13 +2073,13 @@ class MainWindow(QMainWindow):
     def _process_ai_request(self):
         """在后台线程中处理AI请求"""
         try:
-            print("🤖 开始处理AI请求...")
+            #print("🤖 开始处理AI请求...")
             
             # 获取PPT路径
             ppt_path = self.controller.ppt_controller.current_ppt_path
             
             # 提取PPT内容
-            print("📄 提取PPT内容...")
+            #print("📄 提取PPT内容...")
             content_result = self.ppt_extractor.extract_ppt_content(ppt_path)
             
             if "error" in content_result:
@@ -2091,14 +2091,14 @@ class MainWindow(QMainWindow):
                 return
             
             # 调用AI分析
-            print("🤖 调用AI分析...")
+            #print("🤖 调用AI分析...")
             ppt_text = content_result.get("full_text", "")
             advice = self.ai_advisor.get_ppt_optimization_advice(ppt_text, "detailed")
             
             # 格式化输出
             formatted_advice = self._format_ai_advice(advice, len(content_result.get("slides", [])))
             
-            print("✅ AI分析成功完成")
+            #print("✅ AI分析成功完成")
             self.status_updated.emit("AI优化建议获取完成！", False)
             
             # 使用信号发送更新
@@ -2118,8 +2118,8 @@ class MainWindow(QMainWindow):
     def request_ai_advice(self):
         """请求AI优化建议"""
         # 添加调试信息
-        print(f"🔍 DEBUG: 当前PPT路径: {self.controller.ppt_controller.current_ppt_path}")
-        print(f"🔍 DEBUG: AI按钮是否启用: {self.ai_chat_btn.isEnabled()}")
+        #print(f"🔍 DEBUG: 当前PPT路径: {self.controller.ppt_controller.current_ppt_path}")
+        #print(f"🔍 DEBUG: AI按钮是否启用: {self.ai_chat_btn.isEnabled()}")
         
         # 检查是否有打开的PPT
         if not self.controller.ppt_controller.current_ppt_path:
@@ -2145,8 +2145,8 @@ class MainWindow(QMainWindow):
     def request_ai_advice(self):
         """请求AI优化建议"""
         # 添加调试信息
-        print(f"🔍 DEBUG: 当前PPT路径: {self.controller.ppt_controller.current_ppt_path}")
-        print(f"🔍 DEBUG: AI按钮是否启用: {self.ai_chat_btn.isEnabled()}")
+        #print(f"🔍 DEBUG: 当前PPT路径: {self.controller.ppt_controller.current_ppt_path}")
+        #print(f"🔍 DEBUG: AI按钮是否启用: {self.ai_chat_btn.isEnabled()}")
         
         # 检查是否有打开的PPT
         if not self.controller.ppt_controller.current_ppt_path:

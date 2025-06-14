@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+ 
 """
 PPT内容提取器
 PPT Content Extractor
