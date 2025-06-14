@@ -141,8 +141,7 @@ class RecordingConfigDialog(QDialog):
                 padding: 0 8px;
                 color: #5B5BF6;
                 font-weight: bold;
-            }
-        """)
+            }        """)
         video_layout = QFormLayout(video_group)
 
         self.fps_spinbox = QSpinBox()
@@ -151,19 +150,64 @@ class RecordingConfigDialog(QDialog):
         self.fps_spinbox.setSuffix(" FPS")
         self.fps_spinbox.setFixedHeight(36)
 
-        self.camera_position_combo = QComboBox()
-        self.camera_position_combo.addItems(["右下角", "左下角", "右上角", "左上角"])
-        self.camera_position_combo.setFixedHeight(36)
-
-        self.camera_size_combo = QComboBox()
-        self.camera_size_combo.addItems(["小 (240x180)", "中 (320x240)", "大 (480x360)"])
-        self.camera_size_combo.setFixedHeight(36)
+        self.resolution_combo = QComboBox()
+        self.resolution_combo.addItems([
+            "1920x1080 (1080p)", 
+            "1280x720 (720p)", 
+            "1600x900 (900p)",
+            "2560x1440 (1440p)",
+            "3840x2160 (4K)"
+        ])
+        self.resolution_combo.setFixedHeight(36)
+        self.resolution_combo.setStyleSheet("""
+            QComboBox {
+                background-color: #FFFFFF;
+                border: 2px solid #E3E6F5;
+                border-radius: 8px;
+                padding: 8px 12px;
+                color: #000000;
+                font-size: 12px;
+                font-weight: 500;
+            }
+            QComboBox:hover {
+                border-color: #5B5BF6;
+                background-color: #F8F9FF;
+            }
+            QComboBox:focus {
+                border-color: #5B5BF6;
+                outline: none;
+            }
+            QComboBox::drop-down {
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 20px;
+                border-left-width: 1px;
+                border-left-color: #E3E6F5;
+                border-left-style: solid;
+                border-top-right-radius: 8px;
+                border-bottom-right-radius: 8px;
+                background-color: #F6F8FB;
+            }
+            QComboBox::down-arrow {
+                image: url(resources/icons/downarrow.svg);
+                width: 12px;
+                height: 12px;
+            }
+            QComboBox QAbstractItemView {
+                border: 2px solid #E3E6F5;
+                border-radius: 8px;
+                background-color: #FFFFFF;
+                selection-background-color: #CFC3F9;
+                selection-color: #000000;
+                color: #000000;
+                outline: none;
+            }
+        """)
 
         # 设置布局间距
         video_layout.setVerticalSpacing(18)
         video_layout.setHorizontalSpacing(15)
-        
-        # 创建带样式的标签
+          # 创建带样式的标签
         fps_label = QLabel("视频帧率")
         fps_label.setStyleSheet("""
             QLabel {
@@ -176,20 +220,8 @@ class RecordingConfigDialog(QDialog):
             }
         """)
         
-        position_label = QLabel("摄像头位置")
-        position_label.setStyleSheet("""
-            QLabel {
-                color: #23213A;
-                font-size: 11px;
-                font-weight: 600;
-                padding: 2px 0;
-                letter-spacing: 0.5px;
-                margin-bottom: 2px;
-            }
-        """)
-        
-        size_label = QLabel("摄像头大小")
-        size_label.setStyleSheet("""
+        resolution_label = QLabel("录制分辨率")
+        resolution_label.setStyleSheet("""
             QLabel {
                 color: #23213A;
                 font-size: 11px;
@@ -201,8 +233,7 @@ class RecordingConfigDialog(QDialog):
         """)
 
         video_layout.addRow(fps_label, self.fps_spinbox)
-        video_layout.addRow(position_label, self.camera_position_combo)
-        video_layout.addRow(size_label, self.camera_size_combo)
+        video_layout.addRow(resolution_label, self.resolution_combo)
 
         content_layout.addWidget(video_group)
 
@@ -409,9 +440,7 @@ class RecordingConfigDialog(QDialog):
                 selection-background-color: #CFC3F9;
                 selection-color: #23213A;
                 outline: none;
-            }
-
-        """)
+            }        """)
         
     def load_config(self):
         """加载配置到UI"""
@@ -420,23 +449,14 @@ class RecordingConfigDialog(QDialog):
 
         self.fps_spinbox.setValue(getattr(self.config, 'video_fps', 30))
 
-        # 摄像头位置映射
-        position_map = {
-            "bottom_right": 0, "bottom_left": 1,
-            "top_right": 2, "top_left": 3
+        # 录制分辨率映射
+        resolution_map = {
+            "1920x1080": 0, "1280x720": 1, "1600x900": 2,
+            "2560x1440": 3, "3840x2160": 4
         }
-        camera_position = getattr(self.config, 'camera_position', 'bottom_right')
-        self.camera_position_combo.setCurrentIndex(
-            position_map.get(camera_position, 0)
-        )
-
-        # 摄像头大小映射
-        size_map = {
-            (240, 180): 0, (320, 240): 1, (480, 360): 2
-        }
-        camera_size = getattr(self.config, 'camera_size', (320, 240))
-        self.camera_size_combo.setCurrentIndex(
-            size_map.get(camera_size, 1)
+        recording_resolution = getattr(self.config, 'recording_resolution', '1920x1080')
+        self.resolution_combo.setCurrentIndex(
+            resolution_map.get(recording_resolution, 0)
         )
 
         output_dir = getattr(self.config, 'output_dir', 'recordings')
@@ -452,13 +472,9 @@ class RecordingConfigDialog(QDialog):
         # 保持默认值，仅更新视频参数和输出设置
         config.video_fps = self.fps_spinbox.value()
 
-        # 摄像头位置映射
-        position_map = ["bottom_right", "bottom_left", "top_right", "top_left"]
-        config.camera_position = position_map[self.camera_position_combo.currentIndex()]
-
-        # 摄像头大小映射
-        size_map = [(240, 180), (320, 240), (480, 360)]
-        config.camera_size = size_map[self.camera_size_combo.currentIndex()]
+        # 录制分辨率映射
+        resolution_map = ["1920x1080", "1280x720", "1600x900", "2560x1440", "3840x2160"]
+        config.recording_resolution = resolution_map[self.resolution_combo.currentIndex()]
 
         config.output_dir = self.output_dir_label.text()
 

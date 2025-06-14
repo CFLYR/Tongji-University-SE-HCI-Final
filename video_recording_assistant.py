@@ -60,6 +60,7 @@ class RecordingConfig:
     output_dir: str = "recordings"  # 输出目录
     video_fps: int = 30  # 视频帧率
     audio_sample_rate: int = 44100  # 音频采样率
+    recording_resolution: str = "1920x1080"  # 录制分辨率
     camera_position: str = "bottom_right"  # 摄像头位置 
     camera_size: tuple = (320, 240)  # 摄像头大小
 
@@ -194,12 +195,22 @@ class VideoRecorder:
 
         self.initialize_captures()
 
-        # 获取屏幕尺寸
+        # 获取录制分辨率
+        resolution = getattr(self.config, 'recording_resolution', '1920x1080')
+        width_str, height_str = resolution.split('x')
+        recording_width = int(width_str)
+        recording_height = int(height_str)
+
+        # 获取屏幕尺寸作为参考
         if self.config.enable_screen:
             screen_width = self.monitor["width"]
             screen_height = self.monitor["height"]
         else:
             screen_width, screen_height = 1920, 1080  # 默认尺寸
+
+        # 使用指定的录制分辨率
+        self.recording_width = recording_width
+        self.recording_height = recording_height
 
         # 初始化视频写入器
         fourcc = cv.VideoWriter_fourcc(*'mp4v')
@@ -207,7 +218,7 @@ class VideoRecorder:
             output_path,
             fourcc,
             self.config.video_fps,
-            (screen_width, screen_height)
+            (recording_width, recording_height)
         )
 
         if not self.video_writer.isOpened():
@@ -255,10 +266,17 @@ class VideoRecorder:
                 screenshot = self.screen_capture.grab(self.monitor)
                 frame = np.array(screenshot)
                 frame = cv.cvtColor(frame, cv.COLOR_BGRA2BGR)
+                
+                # 调整帧大小到指定的录制分辨率
+                if hasattr(self, 'recording_width') and hasattr(self, 'recording_height'):
+                    frame = cv.resize(frame, (self.recording_width, self.recording_height))
+                    
             except Exception as e:
                 # print(
-                # 创建黑色画面作为备用
-                frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
+                # 创建指定分辨率的黑色画面作为备用
+                recording_height = getattr(self, 'recording_height', 1080)
+                recording_width = getattr(self, 'recording_width', 1920)
+                frame = np.zeros((recording_height, recording_width, 3), dtype=np.uint8)
 
         # 添加摄像头画面
         if self.config.enable_camera and self.camera_capture:
@@ -282,11 +300,17 @@ class VideoRecorder:
                 # 如果不录制悬浮窗内容，需要遮盖悬浮窗区域
                 if not self.config.record_floating_window and self.floating_window:
                     frame = self._mask_floating_window(frame)
+                
+                # 调整帧大小到指定的录制分辨率
+                if hasattr(self, 'recording_width') and hasattr(self, 'recording_height'):
+                    frame = cv.resize(frame, (self.recording_width, self.recording_height))
 
             except Exception as e:
                 # print(
-                # 创建黑色画面作为备用
-                frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
+                # 创建指定分辨率的黑色画面作为备用
+                recording_height = getattr(self, 'recording_height', 1080)
+                recording_width = getattr(self, 'recording_width', 1920)
+                frame = np.zeros((recording_height, recording_width, 3), dtype=np.uint8)
                 cv.putText(frame, "Screen Capture Error", (50, 100),
                            cv.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 3)
 

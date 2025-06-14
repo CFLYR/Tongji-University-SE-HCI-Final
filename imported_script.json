@@ -1,6 +1,6 @@
 {
   "title": "导入的演讲文稿",
-  "import_time": "2025-06-14 23:10:25",
+  "import_time": "2025-06-15 01:06:23",
   "total_lines": 38,
   "lines": [
     {
@@ -18,19 +18,19 @@
     {
       "line_number": 3,
       "text": "首先，让我们来看看项目的背景和意义。",
-      "is_added_to_keywords": true,
+      "is_added_to_keywords": false,
       "character_count": 18
     },
     {
       "line_number": 4,
       "text": "在传统的PPT演示中，演讲者需要频繁地操作鼠标或键盘。",
-      "is_added_to_keywords": true,
+      "is_added_to_keywords": false,
       "character_count": 27
     },
     {
       "line_number": 5,
       "text": "这往往会打断演讲的流畅性，影响与观众的互动。",
-      "is_added_to_keywords": true,
+      "is_added_to_keywords": false,
       "character_count": 22
     },
     {
@@ -210,7 +210,7 @@
     {
       "line_number": 35,
       "text": "它不仅提升了演讲的效率，也增强了互动体验。",
-      "is_added_to_keywords": true,
+      "is_added_to_keywords": false,
       "character_count": 21
     },
     {
