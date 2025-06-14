@@ -11,8 +11,8 @@ import re
 
 # 阿里云配置信息
 URL = "wss://nls-gateway-cn-shanghai.aliyuncs.com/ws/v1"
-TOKEN = "d47f354604834d0e846aeff5d332a951"  # 实际Token，这是临时的免费的，可能需要每24小时换一个
-APPKEY = "Th4Q3N8Q2BRXGhNg"  # 实际Appkey
+TOKEN = "51e5f05a6fe84b6f835bfc301aa78369"  # 实际Token，这是临时的免费的，可能需要每24小时换一个
+APPKEY = "eb0qKUAXtcStGTtw"  # 实际Appkey
 
 # 记录音频数据的队列
 audio_queue = queue.Queue()

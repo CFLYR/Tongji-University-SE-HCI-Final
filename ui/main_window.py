@@ -282,8 +282,8 @@ class MainWindow(QMainWindow):
         if self.isMaximized():
             self.showNormal()
         else:
-            self.showMaximized()
-
+            self.showMaximized() 
+    
     def toggle_presentation(self):
         """切换演示状态"""
         # 根据按钮文本判断当前状态
@@ -291,7 +291,17 @@ class MainWindow(QMainWindow):
             # 检查是否已选择PPT文件
             if not self.controller.ppt_controller.current_ppt_path:
                 self.handle_error("请先选择PPT文件")
-                return  # 开始播放
+                return
+            
+            # 检查是否至少勾选了一项功能（手势识别或语音识别）
+            gesture_enabled = hasattr(self, 'gesture_checkbox') and self.gesture_checkbox.isChecked()
+            voice_enabled = hasattr(self, 'voice_checkbox') and self.voice_checkbox.isChecked()
+            
+            if not gesture_enabled and not voice_enabled:
+                self.update_status("请至少勾选一项功能", is_error=True)
+                return
+                
+            # 开始播放
             if self.controller.start_presentation(self.controller.ppt_controller.current_ppt_path):
                 self.start_btn.setText("暂停")
                 self.update_status("正在播放PPT...")  # 打开悬浮窗

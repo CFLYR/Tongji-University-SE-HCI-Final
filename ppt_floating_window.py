@@ -26,6 +26,7 @@ import sys
 import os
 import json
 import threading
+import traceback
 from datetime import datetime
 from typing import Optional
 
@@ -216,7 +217,7 @@ class SubtitleDisplayWidget(QWidget):
         self.max_history = 5
         self.setFixedHeight(78)  # 调整总高度以匹配内部组件
         self.init_ui()
-
+    
     def init_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(4, 4, 4, 4)
@@ -238,12 +239,10 @@ class SubtitleDisplayWidget(QWidget):
                 color: #165DFF;
             }
         """)
-        layout.addWidget(self.current_label)
-
-        # 历史字幕显示
+        layout.addWidget(self.current_label)        # 历史字幕显示
         self.history_label = QLabel("")
-        self.history_label.setAlignment(Qt.AlignLeft | Qt.AlignTop)
-        self.history_label.setWordWrap(True)
+        self.history_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.history_label.setWordWrap(False)  # 禁用自动换行
         self.history_label.setFixedHeight(30)  # 减少高度
         self.history_label.setStyleSheet("""
             QLabel {
@@ -253,9 +252,15 @@ class SubtitleDisplayWidget(QWidget):
                 padding: 4px;
                 font-size: 9px;
                 color: #666;
+                text-overflow: ellipsis;
             }
         """)
         layout.addWidget(self.history_label)
+        
+        # 确保布局大小固定
+        self.setMinimumHeight(78)
+        self.setMaximumHeight(78)
+
     def update_subtitle(self, text: str):
         """更新字幕"""
         if text and text.strip():
@@ -274,15 +279,36 @@ class SubtitleDisplayWidget(QWidget):
                     # 更新当前字幕
                     self.current_subtitle = text
                     self.current_label.setText(text)
-
+    
     def add_to_history(self, text: str):
         """添加到历史记录"""
         self.subtitle_history.append(text)
         if len(self.subtitle_history) > self.max_history:
             self.subtitle_history.pop(0)
 
-        # 更新历史显示
-        history_text = " | ".join(self.subtitle_history[-2:])  # 显示最近2条
+        # 更新历史显示 - 对长句子进行截断处理
+        recent_history = self.subtitle_history[-2:]  # 显示最近2条
+        
+        # 截断过长的句子并添加省略号
+        max_length_per_item = 15  # 每条历史记录最大字符数
+        truncated_history = []
+        for item in recent_history:
+            # 移除可能的表情符号前缀（如🎤、✅等）
+            clean_item = item
+            if len(item) > 0 and ord(item[0]) > 127:  # 检测是否以非ASCII字符开头（如表情符号）
+                # 查找第一个空格后的内容
+                space_index = item.find(' ')
+                if space_index > 0 and space_index < len(item) - 1:
+                    clean_item = item[space_index + 1:]
+            
+            # 截断并添加省略号
+            if len(clean_item) > max_length_per_item:
+                truncated_item = clean_item[:max_length_per_item] + "..."
+            else:
+                truncated_item = clean_item
+            truncated_history.append(truncated_item)
+        
+        history_text = " | ".join(truncated_history)
         self.history_label.setText(history_text)
 
     def clear_subtitles(self):
@@ -405,7 +431,7 @@ class PPTFloatingWindow(QWidget):
         # 窗口属性
         self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint | Qt.Tool)
         self.setAttribute(Qt.WA_TranslucentBackground, True)
-        self.setFixedSize(340, 300)  # 进一步增加高度以确保组件不重叠
+        self.setFixedSize(340, 340)  # 再增加20px高度确保足够空间
         
         # 设置初始位置到屏幕右下方
         self._set_initial_position()
@@ -468,16 +494,18 @@ class PPTFloatingWindow(QWidget):
         
         # 标记是否已经点击过开始按钮（用于控制自动状态更新）
         self.has_started_once = False
-        
-        # 延迟启动定时器，确保UI完全初始化
+          # 延迟启动定时器，确保UI完全初始化
         QTimer.singleShot(2000, self.start_state_monitoring)
-
+        
+        # 延迟布局修复，确保所有组件都已正确初始化
+        QTimer.singleShot(100, self._delayed_layout_fix)
+    
     def _set_initial_position(self):
         """设置窗口初始位置到屏幕右下方"""
         from PySide6.QtGui import QGuiApplication
         screen = QGuiApplication.primaryScreen().geometry()
         window_width = 340
-        window_height = 260
+        window_height = 340  # 与setFixedSize保持一致
         margin = 20  # 距离屏幕边缘的边距
         
         # 计算右下角位置
@@ -490,7 +518,7 @@ class PPTFloatingWindow(QWidget):
         """初始化UI"""
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(12, 12, 12, 12)
-        main_layout.setSpacing(12)  # 增加组件间距
+        main_layout.setSpacing(8)  # 减少组件间距
 
         # 顶部标题栏
         title_layout = QHBoxLayout()
@@ -660,16 +688,13 @@ class PPTFloatingWindow(QWidget):
 
             record_layout.addWidget(self.btn_record, 1)
             record_layout.addWidget(self.btn_config)
-            main_layout.addLayout(record_layout)
-
-        # 文稿展示区（带滚动功能）
+            main_layout.addLayout(record_layout)        # 文稿展示区（带滚动功能）
         self.script_scroll_area = QScrollArea()
-        self.script_scroll_area.setFixedHeight(120)  # 增加高度以显示更多行文稿
+        self.script_scroll_area.setFixedHeight(100)  # 减少高度避免重叠
         self.script_scroll_area.setWidgetResizable(True)
         self.script_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.script_scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        
-        # 文稿内容标签
+          # 文稿内容标签
         self.text_label = QLabel("文稿展示区")
         self.text_label.setStyleSheet("""
             QLabel {
@@ -682,9 +707,10 @@ class PPTFloatingWindow(QWidget):
             }
         """)        
         self.text_label.setAlignment(Qt.AlignTop | Qt.AlignLeft)
-        self.text_label.setWordWrap(True)
-        # 初始设置合适的高度，避免与下方组件重叠
-        self.text_label.setFixedHeight(100)
+        self.text_label.setWordWrap(True)        # 设置合适的高度和尺寸约束
+        self.text_label.setFixedHeight(80)  # 减少高度
+        self.text_label.setMinimumWidth(300)  # 确保宽度足够
+        self.text_label.setMaximumWidth(320)  # 限制最大宽度
         
         # 设置滚动区域样式
         self.script_scroll_area.setStyleSheet("""
@@ -720,17 +746,18 @@ class PPTFloatingWindow(QWidget):
                 background: none;
             }
         """)
-        
-        # 将文稿标签放入滚动区域
+          # 将文稿标签放入滚动区域
         self.script_scroll_area.setWidget(self.text_label)
         main_layout.addWidget(self.script_scroll_area)
-        
-        # 添加分隔间距，确保滚动区域和字幕区域不重叠
-        main_layout.addSpacing(8)
+          # 添加分隔间距，确保滚动区域和字幕区域不重叠
+        main_layout.addSpacing(4)  # 减少间距，确保不会导致溢出
 
         # AI字幕显示区（语音识别字幕显示）
         self.subtitle_display = SubtitleDisplayWidget()
         main_layout.addWidget(self.subtitle_display)
+        
+        # 添加弹性空间，确保底部对齐
+        main_layout.addStretch(0)
         
         # 设置整体样式
         self.setStyleSheet("""
@@ -740,22 +767,25 @@ class PPTFloatingWindow(QWidget):
                 border: 1px solid #CCCCCC;
             }
         """)
-        
-        # 立即修复初始布局，确保组件不重叠
+          # 立即修复初始布局，确保组件不重叠
         self._fix_initial_layout()
         
         # 强制更新布局
         self.updateGeometry()
         self.update()
+        
+        # 强制重新计算布局
+        self.layout().update()
+        self.layout().activate()
     
     def _fix_initial_layout(self):
         """修复初始布局，确保组件不重叠"""
         try:
             # 确保文稿标签有正确的初始高度
-            self.text_label.setFixedHeight(100)
+            self.text_label.setFixedHeight(80)
             
             # 确保滚动区域有正确的高度
-            self.script_scroll_area.setFixedHeight(120)
+            self.script_scroll_area.setFixedHeight(100)
             
             # 确保字幕显示区域有正确的高度和初始文本
             self.subtitle_display.setFixedHeight(78)
@@ -765,6 +795,30 @@ class PPTFloatingWindow(QWidget):
             
         except Exception as e:
             print(f"⚠️ 修复初始布局时出错: {e}")
+    
+    def _delayed_layout_fix(self):
+        """延迟布局修复，在UI完全初始化后执行"""
+        try:
+            # 强制重新计算所有组件尺寸
+            self.text_label.adjustSize()
+            self.script_scroll_area.setWidget(self.text_label)
+            
+            # 确保字幕显示区域正确显示
+            self.subtitle_display.setFixedHeight(78)
+            self.subtitle_display.current_label.setText("无字幕")
+            self.subtitle_display.history_label.setText("")
+            
+            # 强制重新布局
+            self.layout().activate()
+            self.layout().update()
+            
+            # 强制重绘
+            self.repaint()
+            
+            print("✅ 延迟布局修复完成")
+            
+        except Exception as e:
+            print(f"⚠️ 延迟布局修复时出错: {e}")
     
     def toggle_start_functions(self):
         """统一控制函数：根据当前运行状态和主窗口复选框状态决定切换功能"""
@@ -2109,15 +2163,37 @@ class PPTFloatingWindow(QWidget):
         try:
             # 1. 停止所有活跃的控制功能（语音控制、手势控制）
             print("🛑 正在停止所有控制功能...")
+              # 停止语音识别 - 使用完整的停止流程
+            print("🎤 正在停止语音识别...")
             
-            # 停止语音识别
-            if hasattr(self, 'voice_subtitle_timer'):
-                self.voice_subtitle_timer.stop()
-                print("⏰ 语音字幕定时器已停止")
+            # 首先停止悬浮窗的语音识别功能
+            if hasattr(self, 'stop_voice_recognition'):
+                self.stop_voice_recognition()
+                print("✅ 悬浮窗语音识别已停止")
             
-            if self.main_controller and self.main_controller.audio_thread and self.main_controller.audio_thread.is_alive():
-                RTVTT.toggle_audio_stream(False)
-                print("🎤 语音识别已停止")
+            # 确保通过主控制器停止语音识别（双重保险）
+            if self.main_controller:
+                try:
+                    # 检查语音识别是否正在运行
+                    if RTVTT.is_voice_recognition_running():
+                        print("🔧 检测到语音识别仍在运行，通过主控制器强制停止...")
+                        self.main_controller.toggle_voice_recognition(False, [])
+                        print("✅ 主控制器语音识别已停止")
+                    else:
+                        print("ℹ️ 语音识别已经停止")
+                except Exception as e:
+                    print(f"⚠️ 通过主控制器停止语音识别时出错: {e}")
+            
+            # 最后直接调用RTVTT停止方法（最终保险）
+            try:
+                if RTVTT.is_voice_recognition_running():
+                    print("🔧 语音识别仍在运行，直接调用RTVTT停止方法...")
+                    RTVTT.stop_real_time_voice_recognition()
+                    print("✅ RTVTT语音识别已停止")
+            except Exception as e:
+                print(f"⚠️ 直接停止RTVTT语音识别时出错: {e}")
+            
+            print("✅ 语音识别停止流程完成")
             
             # 停止手势控制
             if GESTURE_AVAILABLE and self.is_gesture_active:
@@ -2188,7 +2264,6 @@ class PPTFloatingWindow(QWidget):
             
         except Exception as e:
             print(f"❌ 结束演示过程中出错: {e}")
-            import traceback
             traceback.print_exc()
             # 即使出错，也要尝试关闭窗口
             self.close()

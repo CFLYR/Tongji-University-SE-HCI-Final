@@ -598,8 +598,8 @@ class SpeechRecognizer:
 
 
 class VideoRecordingAssistant:
-    """录视频助手主类"""
-
+    """录视频助手主类""" 
+    
     def __init__(self):
         self.config = RecordingConfig()
         self.audio_recorder = None
@@ -611,8 +611,7 @@ class VideoRecordingAssistant:
         self.output_dir = self.config.output_dir
         self.current_session_id = None
 
-        # 确保输出目录存在
-        os.makedirs(self.output_dir, exist_ok=True)
+        # 注意：不在初始化时创建输出目录，而是在真正开始录制时创建
 
     def set_speech_manager(self, speech_manager: SpeechTextManager):
         """设置演讲稿管理器"""
