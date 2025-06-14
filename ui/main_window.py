@@ -814,7 +814,7 @@ class MainWindow(QMainWindow):
         icon_label.setPixmap(QIcon("resources/icons/diannao.svg").pixmap(24, 24))
         icon_label.setFixedSize(28, 28)
         icon_label.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
-        title_label = QLabel("PPT播放助手")
+        title_label = QLabel("Presentation助手")
         title_label.setStyleSheet("font-size: 20px; font-weight: bold; color: #5B5BF6;")
         title_label.setFixedHeight(28)
 
