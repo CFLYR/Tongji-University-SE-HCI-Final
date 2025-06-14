@@ -1941,7 +1941,7 @@ class MainWindow(QMainWindow):
         if display_lines:
             script_text = f"📄 演讲文稿跟随 (第{self.current_script_position + 1}行)\n\n" + "\n".join(display_lines)
             self.floating_window.set_script_text(script_text)
-            print(f"📺 悬浮窗文稿显示已更新到第{self.current_script_position + 1}行")
+            #print(f"📺 悬浮窗文稿显示已更新到第{self.current_script_position + 1}行")
 
     def process_complete_sentence(self, sentence: str):
         """处理完整的识别句子，进行文稿匹配"""

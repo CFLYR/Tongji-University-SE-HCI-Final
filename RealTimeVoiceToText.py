@@ -479,7 +479,7 @@ def stop_real_time_voice_recognition():
     
     # 等待线程结束
     if _audio_stream_thread and _audio_stream_thread.is_alive():
-        print("⏳ 等待音频流线程结束...")
+        #print("⏳ 等待音频流线程结束...")
         _audio_stream_thread.join(timeout=3.0)
         # if _audio_stream_thread.is_alive():
         #     # print(
