@@ -905,7 +905,6 @@ class MainWindow(QMainWindow):
             #centerPanel {
                 background-color: #FFFFFF;
                 border-radius: 16px;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.10);
                 border: none;
             }
         """)
@@ -1534,7 +1533,6 @@ class MainWindow(QMainWindow):
                 border-radius: 12px;
                 background-color: #FFFFFF;
                 color: #23213A;
-                box-shadow: 0 2px 12px rgba(35,33,58,0.04);
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
@@ -1546,7 +1544,6 @@ class MainWindow(QMainWindow):
                 background-color: #FFFFFF !important;
                 border-radius: 10px;
                 color: #23213A;
-                box-shadow: 0 2px 12px rgba(35,33,58,0.04);
             }
             #previewGroup:title {
                 color: #23213A;
@@ -1556,8 +1553,6 @@ class MainWindow(QMainWindow):
                 color: #fff;
                 border: none;
                 border-radius: 12px;
-                box-shadow: 0 2px 8px rgba(35,33,58,0.06);
-                transition: background 0.2s;
             }
             QPushButton#windowControlButton {
                 background: none;
@@ -1583,7 +1578,6 @@ class MainWindow(QMainWindow):
             QLabel#previewimage {
                 background: #FFFFFF;
                 border-radius: 12px;
-                box-shadow: 0 2px 8px rgba(35,33,58,0.04);
             }
             QSpinBox, QComboBox, QTextEdit, QLineEdit {
                 border: 2px solid #E3E6F5;
@@ -1592,7 +1586,6 @@ class MainWindow(QMainWindow):
                 selection-background-color: #CFC3F9;
                 selection-color: #23213A;
                 color: #23213A;
-                box-shadow: 0 1px 4px rgba(35,33,58,0.03);
             }
             QSpinBox:hover, QComboBox:hover, QTextEdit:hover, QLineEdit:hover {
                 border-color: #CFC3F9;
@@ -1602,6 +1595,18 @@ class MainWindow(QMainWindow):
             }
             QComboBox::drop-down {
                 border: none;
+                background: #F6F8FB;
+                border-radius: 6px;
+                width: 20px;
+                margin: 2px;
+            }
+            QComboBox::drop-down:hover {
+                background: #E3E6F5;
+            }
+            QComboBox::down-arrow {
+                image: url(resources/icons/downarrow.svg);
+                width: 12px;
+                height: 12px;
             }
             QComboBox QAbstractItemView {
                 border: 2px solid #CFC3F9;
@@ -1612,11 +1617,23 @@ class MainWindow(QMainWindow):
             }
             QSpinBox::up-button, QSpinBox::down-button {
                 border: none;
-                background-color: #CFC3F9;
-                border-radius: 8px;
+                background: #F6F8FB;
+                border-radius: 6px;
+                width: 16px;
+                margin: 1px;
             }
             QSpinBox::up-button:hover, QSpinBox::down-button:hover {
-                background-color: #5B5BF6;
+                background: #E3E6F5;
+            }
+            QSpinBox::up-arrow {
+                image: url(resources/icons/uparrow.svg);
+                width: 12px;
+                height: 12px;
+            }
+            QSpinBox::down-arrow {
+                image: url(resources/icons/downarrow.svg);
+                width: 12px;
+                height: 12px;
             }
             QCheckBox {
                 margin-left: 10px;
@@ -1649,7 +1666,6 @@ class MainWindow(QMainWindow):
                 border: 2px solid #E3E6F5;
                 border-radius: 12px;
                 color: #23213A;
-                box-shadow: 0 1px 4px rgba(35,33,58,0.03);
             }
             QTextEdit:focus {
                 border-color: #5B5BF6;
@@ -1658,12 +1674,10 @@ class MainWindow(QMainWindow):
                 background-color: #FFFFFF;
                 border-radius: 0 0 12px 12px;
                 color: #23213A;
-                box-shadow: 0 2px 8px rgba(35,33,58,0.06);
             }
             #leftPanel {
                 background-color: #FFFFFF;
                 border-radius: 12px;
-                box-shadow: 0 2px 12px rgba(35,33,58,0.04);
             }
             .QLabel[status="success"] {
                 background-color: #E3F9F1;

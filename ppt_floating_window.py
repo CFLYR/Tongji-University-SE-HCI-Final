@@ -57,95 +57,360 @@ class RecordingConfigDialog(QDialog):
         super().__init__(parent)
         self.config = config or (RecordingConfig() if RECORDING_AVAILABLE else {})
         self.setWindowTitle("录制配置")
-        self.setFixedSize(400, 500)
-        self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.Dialog)
+        self.setFixedSize(450, 550)
+        self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.Dialog | Qt.FramelessWindowHint)
+        self.setAttribute(Qt.WA_TranslucentBackground, True)
         self.init_ui()
         self.load_config()
 
     def init_ui(self):
+        # 创建主容器
+        main_widget = QWidget(self)
+        main_widget.setStyleSheet("""
+            QWidget {
+                background-color: #F6F8FB;
+                border-radius: 16px;
+                border: 2px solid #E3E6F5;
+            }
+        """)
+        
         layout = QVBoxLayout(self)
-        layout.setSpacing(15)
-        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(main_widget)
+        
+        content_layout = QVBoxLayout(main_widget)
+        content_layout.setSpacing(20)
+        content_layout.setContentsMargins(25, 25, 25, 25)
+
+        # 标题栏
+        title_layout = QHBoxLayout()
+        title_label = QLabel("🎥 录制配置")
+        title_label.setStyleSheet("""
+            QLabel {
+                font-size: 18px;
+                font-weight: bold;
+                color: #23213A;
+                padding: 8px 0;
+                background-color: transparent;
+            }
+        """)
+        
+        # 关闭按钮
+        close_btn = QPushButton("✕")
+        close_btn.setFixedSize(32, 32)
+        close_btn.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                color: #8B8BA7;
+                border: none;
+                border-radius: 16px;
+                font-size: 16px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #E3E6F5;
+                color: #23213A;
+            }
+            QPushButton:pressed {
+                background-color: #CFC3F9;
+            }
+        """)
+        close_btn.clicked.connect(self.reject)
+        
+        title_layout.addWidget(title_label)
+        title_layout.addStretch()
+        title_layout.addWidget(close_btn)
+        content_layout.addLayout(title_layout)
 
         # 视频参数组
-        video_group = QGroupBox("视频参数")
+        video_group = QGroupBox("📹 视频参数")
+        video_group.setStyleSheet("""
+            QGroupBox {
+                font-size: 14px;
+                font-weight: bold;
+                color: #23213A;
+                border: 2px solid #E3E6F5;
+                border-radius: 12px;
+                margin-top: 12px;
+                padding-top: 15px;
+                background-color: #FFFFFF;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 15px;
+                padding: 0 8px;
+                color: #5B5BF6;
+                font-weight: bold;
+            }
+        """)
         video_layout = QFormLayout(video_group)
 
         self.fps_spinbox = QSpinBox()
         self.fps_spinbox.setRange(15, 60)
         self.fps_spinbox.setValue(30)
         self.fps_spinbox.setSuffix(" FPS")
+        self.fps_spinbox.setFixedHeight(36)
 
         self.camera_position_combo = QComboBox()
         self.camera_position_combo.addItems(["右下角", "左下角", "右上角", "左上角"])
+        self.camera_position_combo.setFixedHeight(36)
 
         self.camera_size_combo = QComboBox()
         self.camera_size_combo.addItems(["小 (240x180)", "中 (320x240)", "大 (480x360)"])
+        self.camera_size_combo.setFixedHeight(36)
 
-        video_layout.addRow("视频帧率:", self.fps_spinbox)
-        video_layout.addRow("摄像头位置:", self.camera_position_combo)
-        video_layout.addRow("摄像头大小:", self.camera_size_combo)
+        # 设置布局间距
+        video_layout.setVerticalSpacing(18)
+        video_layout.setHorizontalSpacing(15)
+        
+        # 创建带样式的标签
+        fps_label = QLabel("视频帧率")
+        fps_label.setStyleSheet("""
+            QLabel {
+                color: #23213A;
+                font-size: 11px;
+                font-weight: 600;
+                padding: 2px 0;
+                letter-spacing: 0.5px;
+                margin-bottom: 2px;
+            }
+        """)
+        
+        position_label = QLabel("摄像头位置")
+        position_label.setStyleSheet("""
+            QLabel {
+                color: #23213A;
+                font-size: 11px;
+                font-weight: 600;
+                padding: 2px 0;
+                letter-spacing: 0.5px;
+                margin-bottom: 2px;
+            }
+        """)
+        
+        size_label = QLabel("摄像头大小")
+        size_label.setStyleSheet("""
+            QLabel {
+                color: #23213A;
+                font-size: 11px;
+                font-weight: 600;
+                padding: 2px 0;
+                letter-spacing: 0.5px;
+                margin-bottom: 2px;
+            }
+        """)
 
-        layout.addWidget(video_group)
+        video_layout.addRow(fps_label, self.fps_spinbox)
+        video_layout.addRow(position_label, self.camera_position_combo)
+        video_layout.addRow(size_label, self.camera_size_combo)
+
+        content_layout.addWidget(video_group)
 
         # 输出设置组
-        output_group = QGroupBox("输出设置")
-        output_layout = QFormLayout(output_group)
-
-        self.output_dir_label = QLabel("recordings/")
-        self.output_dir_btn = QPushButton("选择目录...")
-        self.output_dir_btn.clicked.connect(self.select_output_dir)
-
-        output_dir_layout = QHBoxLayout()
-        output_dir_layout.addWidget(self.output_dir_label)
-        output_dir_layout.addWidget(self.output_dir_btn)
-
-        output_layout.addRow("输出目录:", output_dir_layout)
-
-        layout.addWidget(output_group)
-        
-        # 按钮组
-        button_layout = QHBoxLayout()
-
-        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        button_box.accepted.connect(self.accept)
-        button_box.rejected.connect(self.reject)
-        button_layout.addWidget(button_box) 
-        layout.addLayout(button_layout)
-
-        # 设置样式
-        self.setStyleSheet("""
+        output_group = QGroupBox("📁 输出设置")
+        output_group.setStyleSheet("""
             QGroupBox {
+                font-size: 14px;
                 font-weight: bold;
-                font-size: 12px;
-                border: 2px solid #cccccc;
-                border-radius: 8px;
-                margin-top: 1ex;
-                padding-top: 10px;
+                color: #23213A;
+                border: 2px solid #E3E6F5;
+                border-radius: 12px;
+                margin-top: 12px;
+                padding-top: 15px;
+                background-color: #FFFFFF;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-                color: #165DFF;
+                left: 15px;
+                padding: 0 8px;
+                color: #5B5BF6;
+                font-weight: bold;
             }
-            QCheckBox {
-                spacing: 8px;
+        """)
+        output_layout = QFormLayout(output_group)
+
+        self.output_dir_label = QLabel("recordings/")
+        self.output_dir_label.setStyleSheet("""
+            QLabel {
+                background-color: #F6F8FB;
+                border: 2px solid #E3E6F5;
+                border-radius: 8px;
+                padding: 8px 12px;
+                color: #23213A;
+                font-size: 12px;
             }
-            QCheckBox::indicator {
+        """)
+        
+        self.output_dir_btn = QPushButton("选择目录...")
+        self.output_dir_btn.setFixedHeight(36)
+        self.output_dir_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #5B5BF6;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font-size: 12px;
+                font-weight: bold;
+                padding: 8px 16px;
+            }
+            QPushButton:hover {
+                background-color: #CFC3F9;
+                color: #23213A;
+            }
+            QPushButton:pressed {
+                background-color: #E3E6F5;
+            }
+        """)
+        self.output_dir_btn.clicked.connect(self.select_output_dir)
+
+        output_dir_layout = QHBoxLayout()
+        output_dir_layout.addWidget(self.output_dir_label, 1)
+        output_dir_layout.addWidget(self.output_dir_btn, 0)
+
+        # 设置布局间距
+        output_layout.setVerticalSpacing(18)
+        output_layout.setHorizontalSpacing(15)
+        
+        # 创建带样式的标签
+        output_label = QLabel("输出目录")
+        output_label.setStyleSheet("""
+            QLabel {
+                color: #23213A;
+                font-size: 11px;
+                font-weight: 600;
+                padding: 2px 0;
+                letter-spacing: 0.5px;
+                margin-bottom: 2px;
+            }
+        """)
+
+        output_layout.addRow(output_label, output_dir_layout)
+
+        content_layout.addWidget(output_group)
+        
+        # 添加弹性空间
+        content_layout.addStretch()
+        
+        # 按钮组
+        button_layout = QHBoxLayout()
+        button_layout.setSpacing(15)
+        
+        cancel_btn = QPushButton("取消")
+        cancel_btn.setFixedSize(100, 40)
+        cancel_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #E3E6F5;
+                color: #8B8BA7;
+                border: none;
+                border-radius: 12px;
+                font-size: 14px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #CFC3F9;
+                color: #23213A;
+            }
+            QPushButton:pressed {
+                background-color: #F6F8FB;
+            }
+        """)
+        cancel_btn.clicked.connect(self.reject)
+        
+        ok_btn = QPushButton("确定")
+        ok_btn.setFixedSize(100, 40)
+        ok_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #5B5BF6;
+                color: white;
+                border: none;
+                border-radius: 12px;
+                font-size: 14px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #CFC3F9;
+                color: #23213A;
+            }
+            QPushButton:pressed {
+                background-color: #E3E6F5;
+            }
+        """)
+        ok_btn.clicked.connect(self.accept)
+        
+        button_layout.addStretch()
+        button_layout.addWidget(cancel_btn)
+        button_layout.addWidget(ok_btn)
+        content_layout.addLayout(button_layout)
+
+        # 设置全局样式
+        self.setStyleSheet("""
+            QLabel {
+                color: #23213A;
+                font-size: 13px;
+                font-weight: 500;
+                font-family: "Microsoft YaHei", Arial, sans-serif;
+            }
+            QSpinBox, QComboBox {
+                border: 2px solid #E3E6F5;
+                border-radius: 8px;
+                background-color: #FFFFFF;
+                color: #23213A;
+                padding: 6px 12px;
+                font-size: 12px;
+                selection-background-color: #CFC3F9;
+                selection-color: #23213A;
+            }
+            QSpinBox:hover, QComboBox:hover {
+                border-color: #CFC3F9;
+            }
+            QSpinBox:focus, QComboBox:focus {
+                border-color: #5B5BF6;
+            }
+            QSpinBox::up-button, QSpinBox::down-button {
+                border: none;
+                background: #F6F8FB;
+                border-radius: 6px;
                 width: 16px;
-                height: 16px;
+                margin: 1px;
             }
-            QCheckBox::indicator:unchecked {
-                border: 2px solid #cccccc;
-                border-radius: 3px;
-                background-color: white;
+            QSpinBox::up-button:hover, QSpinBox::down-button:hover {
+                background: #E3E6F5;
             }
-            QCheckBox::indicator:checked {
-                border: 2px solid #165DFF;
-                border-radius: 3px;
-                background-color: #165DFF;
+            QSpinBox::up-arrow {
+                image: url(resources/icons/uparrow.svg);
+                width: 12px;
+                height: 12px;
             }
+            QSpinBox::down-arrow {
+                image: url(resources/icons/downarrow.svg);
+                width: 12px;
+                height: 12px;
+            }
+            QComboBox::drop-down {
+                border: none;
+                background: #F6F8FB;
+                border-radius: 6px;
+                width: 20px;
+                margin: 2px;
+            }
+            QComboBox::drop-down:hover {
+                background: #E3E6F5;
+            }
+            QComboBox::down-arrow {
+                image: url(resources/icons/downarrow.svg);
+                width: 12px;
+                height: 12px;
+            }
+
+            QComboBox QAbstractItemView {
+                border: 2px solid #E3E6F5;
+                border-radius: 8px;
+                background-color: #FFFFFF;
+                selection-background-color: #CFC3F9;
+                selection-color: #23213A;
+                outline: none;
+            }
+
         """)
         
     def load_config(self):
@@ -246,13 +511,12 @@ class SubtitleDisplayWidget(QWidget):
         self.history_label.setFixedHeight(30)  # 减少高度
         self.history_label.setStyleSheet("""
             QLabel {
-                background: #f8f8f8;
+                background: #FFFFFF;
                 border: 1px solid #ddd;
                 border-radius: 3px;
                 padding: 4px;
                 font-size: 9px;
                 color: #666;
-                text-overflow: ellipsis;
             }
         """)
         layout.addWidget(self.history_label)
@@ -595,19 +859,20 @@ class PPTFloatingWindow(QWidget):
             btn.setFixedHeight(28)
             btn.setStyleSheet("""
                 QPushButton {
-                    background: #165DFF;
+                    background: #5B5BF6;
                     color: white;
-                    border-radius: 5px;
+                    border-radius: 8px;
                     font-weight: bold;
-                    padding: 0 8px;
+                    padding: 0 12px;
                     border: none;
                     font-size: 11px;
                 }
                 QPushButton:hover {
-                    background: #466BB0;
+                    background: #CFC3F9;
+                    color: #23213A;
                 }
                 QPushButton:pressed {
-                    background: #0F4FDD;
+                    background: #E3E6F5;
                 }
             """)
         
@@ -617,9 +882,9 @@ class PPTFloatingWindow(QWidget):
             QPushButton {
                 background: #FF4D4F;
                 color: white;
-                border-radius: 5px;
+                border-radius: 8px;
                 font-weight: bold;
-                padding: 0 8px;
+                padding: 0 12px;
                 border: none;
                 font-size: 11px;
             }
@@ -653,19 +918,20 @@ class PPTFloatingWindow(QWidget):
             self.btn_record.setFixedHeight(28)
             self.btn_record.setStyleSheet("""
                 QPushButton {
-                    background: #52C41A;
+                    background: #5B5BF6;
                     color: white;
-                    border-radius: 5px;
+                    border-radius: 8px;
                     font-weight: bold;
-                    padding: 0 8px;
+                    padding: 0 12px;
                     border: none;
                     font-size: 11px;
                 }
                 QPushButton:hover {
-                    background: #73D13D;
+                    background: #CFC3F9;
+                    color: #23213A;
                 }
                 QPushButton:pressed {
-                    background: #389E0D;
+                    background: #E3E6F5;
                 }
             """)
             self.btn_record.clicked.connect(self.toggle_recording)
@@ -715,7 +981,7 @@ class PPTFloatingWindow(QWidget):
         # 设置滚动区域样式
         self.script_scroll_area.setStyleSheet("""
             QScrollArea {
-                background: #F5F5F5;
+                background: #FFFFFF;
                 border: 1px solid #E0E0E0;
                 border-radius: 5px;
             }
@@ -859,19 +1125,20 @@ class PPTFloatingWindow(QWidget):
                 self.btn_start.setText("开始")
                 self.btn_start.setStyleSheet("""
                     QPushButton {
-                        background: #165DFF;
+                        background: #5B5BF6;
                         color: white;
-                        border-radius: 5px;
+                        border-radius: 8px;
                         font-weight: bold;
-                        padding: 0 8px;
+                        padding: 0 12px;
                         border: none;
                         font-size: 11px;
                     }
                     QPushButton:hover {
-                        background: #466BB0;
+                        background: #CFC3F9;
+                        color: #23213A;
                     }
                     QPushButton:pressed {
-                        background: #0F4FDD;
+                        background: #E3E6F5;
                     }
                 """)
                 # print(
@@ -946,9 +1213,9 @@ class PPTFloatingWindow(QWidget):
                 QPushButton {
                     background: #FF4D4F;
                     color: white;
-                    border-radius: 5px;
+                    border-radius: 8px;
                     font-weight: bold;
-                    padding: 0 8px;
+                    padding: 0 12px;
                     border: none;
                     font-size: 11px;
                 }
@@ -965,9 +1232,9 @@ class PPTFloatingWindow(QWidget):
                 QPushButton {
                     background: #FF4D4F;
                     color: white;
-                    border-radius: 5px;
+                    border-radius: 8px;
                     font-weight: bold;
-                    padding: 0 8px;
+                    padding: 0 12px;
                     border: none;
                     font-size: 11px;
                 }
@@ -984,9 +1251,9 @@ class PPTFloatingWindow(QWidget):
                 QPushButton {
                     background: #FF4D4F;
                     color: white;
-                    border-radius: 5px;
+                    border-radius: 8px;
                     font-weight: bold;
-                    padding: 0 8px;
+                    padding: 0 12px;
                     border: none;
                     font-size: 11px;
                 }
@@ -1295,19 +1562,20 @@ class PPTFloatingWindow(QWidget):
         self.btn_record.setText("开始录制")
         self.btn_record.setStyleSheet("""
             QPushButton {
-                background: #52C41A;
+                background: #5B5BF6;
                 color: white;
-                border-radius: 5px;
+                border-radius: 8px;
                 font-weight: bold;
-                padding: 0 8px;
+                padding: 0 12px;
                 border: none;
                 font-size: 11px;
             }
             QPushButton:hover {
-                background: #73D13D;
+                background: #CFC3F9;
+                color: #23213A;
             }
             QPushButton:pressed {
-                background: #389E0D;
+                background: #E3E6F5;
             }
         """)
 
@@ -2117,22 +2385,23 @@ class PPTFloatingWindow(QWidget):
             pass
     
     def _set_start_button_style(self):
-        """设置开始按钮样式（蓝色）"""
+        """设置开始按钮样式（主题色）"""
         self.btn_start.setStyleSheet("""
             QPushButton {
-                background: #165DFF;
+                background: #5B5BF6;
                 color: white;
-                border-radius: 5px;
+                border-radius: 8px;
                 font-weight: bold;
-                padding: 0 8px;
+                padding: 0 12px;
                 border: none;
                 font-size: 11px;
             }
             QPushButton:hover {
-                background: #466BB0;
+                background: #CFC3F9;
+                color: #23213A;
             }
             QPushButton:pressed {
-                background: #0F4FDD;
+                background: #E3E6F5;
             }
         """)
     
@@ -2140,11 +2409,11 @@ class PPTFloatingWindow(QWidget):
         """设置禁用状态按钮样式（灰色）"""
         self.btn_start.setStyleSheet("""
             QPushButton {
-                background: #8C8C8C;
+                background: #8B8BA7;
                 color: white;
-                border-radius: 5px;
+                border-radius: 8px;
                 font-weight: bold;
-                padding: 0 8px;
+                padding: 0 12px;
                 border: none;
                 font-size: 11px;
             }

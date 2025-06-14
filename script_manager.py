@@ -60,7 +60,6 @@ class CustomMessageBox:
                 min-width: 80px;
                 min-height: 32px;
                 margin: 5px;
-                box-shadow: 0 2px 8px rgba(35,33,58,0.06);
             }
             QMessageBox QPushButton:hover {
                 background-color: #CFC3F9;
@@ -114,7 +113,6 @@ class CustomMessageBox:
                 min-width: 80px;
                 min-height: 32px;
                 margin: 5px;
-                box-shadow: 0 2px 8px rgba(35,33,58,0.06);
             }
             QMessageBox QPushButton:hover {
                 background-color: #CFC3F9;
@@ -165,7 +163,7 @@ class ScriptLineWidget(QWidget):
                 color: #333;
                 font-size: 13px;
                 padding: 4px;
-                background-color: transparent;
+                background-color: #F5F5F5;
             }
         """)
         
@@ -301,7 +299,6 @@ class ScriptImportDialog(QDialog):
                 border-radius: 12px;
                 font-size: 12px;
                 font-weight: bold;
-                box-shadow: 0 2px 8px rgba(35,33,58,0.06);
             }
             QPushButton:hover {
                 background-color: #CFC3F9;
@@ -329,7 +326,6 @@ class ScriptImportDialog(QDialog):
                 border-radius: 12px;
                 border: 1px solid #E3E6F5;
                 border-left: 3px solid #5B5BF6;
-                box-shadow: 0 1px 4px rgba(35,33,58,0.03);
             }
         """)
         layout.addWidget(info_label)
@@ -342,7 +338,6 @@ class ScriptImportDialog(QDialog):
                 border: 2px solid #E3E6F5;
                 border-radius: 12px;
                 background-color: #FFFFFF;
-                box-shadow: 0 2px 8px rgba(35,33,58,0.06);
             }
         """)
         
@@ -393,7 +388,6 @@ class ScriptImportDialog(QDialog):
                 border-radius: 12px;
                 font-size: 12px;
                 font-weight: bold;
-                box-shadow: 0 2px 8px rgba(35,33,58,0.06);
             }
             QPushButton:hover {
                 background-color: #CFC3F9;
@@ -416,7 +410,6 @@ class ScriptImportDialog(QDialog):
                 border-radius: 12px;
                 font-size: 12px;
                 font-weight: bold;
-                box-shadow: 0 2px 8px rgba(35,33,58,0.06);
             }
             QPushButton:hover {
                 background-color: #CFC3F9;

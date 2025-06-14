@@ -52,7 +52,6 @@ class CustomInputDialog(QDialog):
                 font-size: 12px;
                 selection-background-color: #CFC3F9;
                 selection-color: #23213A;
-                box-shadow: 0 1px 4px rgba(35,33,58,0.03);
             }
             QLineEdit:focus {
                 border-color: #5B5BF6;
@@ -66,7 +65,6 @@ class CustomInputDialog(QDialog):
                 font-weight: bold;
                 padding: 6px 14px;
                 min-width: 70px;
-                box-shadow: 0 2px 8px rgba(35,33,58,0.06);
             }
             QPushButton:hover {
                 background-color: #CFC3F9;
@@ -185,7 +183,6 @@ class CustomMessageBox:
                 font-weight: bold;
                 padding: 6px 14px;
                 min-width: 70px;
-                box-shadow: 0 2px 8px rgba(35,33,58,0.06);
             }
             QMessageBox QPushButton:hover {
                 background-color: #CFC3F9;
@@ -258,7 +255,6 @@ class CustomMessageBox:
                 min-width: 85px;
                 min-height: 36px;
                 margin: 8px 10px;
-                box-shadow: 0 2px 8px rgba(35,33,58,0.06);
             }
             QMessageBox QPushButton:hover {
                 background-color: #CFC3F9;
@@ -349,7 +345,6 @@ class KeywordItemWidget(QWidget):
                 background-color: #FFFFFF;
                 border-radius: 10px;
                 border: 1px solid #E3E6F5;
-                box-shadow: 0 1px 4px rgba(35,33,58,0.03);
             }
             QWidget:hover {
                 border-color: #5B5BF6;
@@ -384,7 +379,6 @@ class KeywordItemWidget(QWidget):
                 font-size: 11px;
                 font-weight: bold;
                 min-height: 26px;
-                box-shadow: 0 2px 8px rgba(35,33,58,0.06);
             }
             QPushButton:hover {
                 background-color: #CFC3F9;
@@ -408,7 +402,6 @@ class KeywordItemWidget(QWidget):
                 font-size: 11px;
                 font-weight: bold;
                 min-height: 26px;
-                box-shadow: 0 2px 8px rgba(35,33,58,0.06);
             }
             QPushButton:hover {
                 background-color: #E53E3E;
@@ -497,7 +490,6 @@ class KeywordManagerDialog(QDialog):
                 background-color: transparent;
                 border-radius: 0px;
                 border: none;
-                box-shadow: 0 1px 4px rgba(35,33,58,0.03);
             }
         """)
         desc_label.setWordWrap(True)
@@ -514,7 +506,6 @@ class KeywordManagerDialog(QDialog):
                 font-size: 12px;
                 font-weight: bold;
                 padding: 6px 14px;
-                box-shadow: 0 2px 8px rgba(35,33,58,0.06);
             }
             QPushButton:hover {
                 background-color: #CFC3F9;
@@ -534,7 +525,6 @@ class KeywordManagerDialog(QDialog):
                 border: 2px solid #E3E6F5;
                 border-radius: 10px;
                 padding: 8px;
-                box-shadow: 0 2px 8px rgba(35,33,58,0.06);
             }
         """)
         
@@ -576,7 +566,6 @@ class KeywordManagerDialog(QDialog):
                 border-radius: 10px;
                 font-size: 12px;
                 font-weight: bold;
-                box-shadow: 0 2px 8px rgba(35,33,58,0.06);
             }
             QPushButton:hover {
                 background-color: #CFC3F9;
@@ -598,7 +587,6 @@ class KeywordManagerDialog(QDialog):
                 border-radius: 10px;
                 font-size: 12px;
                 font-weight: bold;
-                box-shadow: 0 2px 8px rgba(35,33,58,0.06);
             }
             QPushButton:hover {
                 background-color: #CFC3F9;

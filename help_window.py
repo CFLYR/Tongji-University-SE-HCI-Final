@@ -657,7 +657,7 @@ class HelpWindow(QDialog):
 </ul>
 </div>
 
-<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 25px; border-radius: 16px; margin-top: 30px; color: white; box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);">
+<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 25px; border-radius: 16px; margin-top: 30px; color: white;">
 <h3 style="color: white; margin-bottom: 20px; font-size: 18px;">🆘 技术支持</h3>
 <p style="margin: 12px 0; line-height: 2.0; opacity: 0.95;">如果以上解答无法解决您的问题，请联系技术支持：</p>
 <ul style="margin: 15px 0; padding-left: 20px;">
@@ -728,7 +728,7 @@ class HelpWindow(QDialog):
                 border: none;
                 border-radius: 12px;
                 background-color: #FFFFFF;
-                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+
             }
             
             #helpTabWidget::tab-bar {
@@ -746,13 +746,11 @@ class HelpWindow(QDialog):
                 min-width: 95px;
                 font-size: 14px;
                 font-weight: 500;
-                transition: all 0.2s ease;
             }
             
             #helpTabWidget QTabBar::tab:selected {
                 background-color: #5B5BF6;
                 color: white;
-                box-shadow: 0 2px 8px rgba(91, 91, 246, 0.3);
             }
             
             #helpTabWidget QTabBar::tab:hover:!selected {
@@ -779,20 +777,14 @@ class HelpWindow(QDialog):
                 font-size: 14px;
                 font-weight: bold;
                 padding: 14px 28px;
-                box-shadow: 0 3px 12px rgba(91, 91, 246, 0.25);
-                transition: all 0.2s ease;
             }
             
             QPushButton:hover {
                 background-color: #4A4AE5;
-                transform: translateY(-2px);
-                box-shadow: 0 6px 20px rgba(91, 91, 246, 0.35);
             }
             
             QPushButton:pressed {
                 background-color: #3939D4;
-                transform: translateY(0px);
-                box-shadow: 0 2px 4px rgba(91, 91, 246, 0.2);
             }
             
             QLabel {
